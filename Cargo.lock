@@ -106,9 +106,20 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "94cb07b0da6a73955f8fb85d24c466778e70cda767a568229b104f0264089330"
 dependencies = [
  "byte-tools",
- "crypto-mac",
+ "crypto-mac 0.7.0",
  "digest 0.8.1",
  "opaque-debug 0.2.3",
+]
+
+[[package]]
+name = "blake2"
+version = "0.9.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "10a5720225ef5daecf08657f23791354e1685a8c91a4c60c7f3d3b2892f978f4"
+dependencies = [
+ "crypto-mac 0.8.0",
+ "digest 0.9.0",
+ "opaque-debug 0.3.0",
 ]
 
 [[package]]
@@ -393,7 +404,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4434400df11d95d556bac068ddfedd482915eb18fe8bea89bc80b6e4b1c179e5"
 dependencies = [
  "generic-array 0.12.3",
- "subtle",
+ "subtle 1.0.0",
+]
+
+[[package]]
+name = "crypto-mac"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b584a330336237c1eecd3e94266efb216c56ed91225d634cb2991c5f3fd1aeab"
+dependencies = [
+ "generic-array 0.14.4",
+ "subtle 2.4.0",
 ]
 
 [[package]]
@@ -2027,7 +2048,7 @@ name = "snarkos-posw"
 version = "1.1.4"
 source = "git+https://github.com/AleoHQ/snarkOS.git?rev=20a8495#20a8495d591f9a950201057e2129dee461a86be5"
 dependencies = [
- "blake2",
+ "blake2 0.8.1",
  "rand 0.7.3",
  "snarkos-profiler",
  "snarkvm-algorithms 0.0.1",
@@ -2086,7 +2107,7 @@ name = "snarkvm-algorithms"
 version = "0.0.1"
 source = "git+https://github.com/AleoHQ/snarkVM.git?rev=81d225a#81d225aca0cdede198a1ef5b30b798b02ced13cc"
 dependencies = [
- "blake2",
+ "blake2 0.8.1",
  "derivative",
  "digest 0.8.1",
  "itertools 0.9.0",
@@ -2105,7 +2126,7 @@ dependencies = [
 name = "snarkvm-algorithms"
 version = "0.0.4"
 dependencies = [
- "blake2",
+ "blake2 0.9.1",
  "criterion",
  "csv",
  "derivative",
@@ -2181,7 +2202,7 @@ version = "0.0.1"
 source = "git+https://github.com/AleoHQ/snarkVM.git?rev=81d225a#81d225aca0cdede198a1ef5b30b798b02ced13cc"
 dependencies = [
  "anyhow",
- "blake2",
+ "blake2 0.8.1",
  "derivative",
  "hex",
  "itertools 0.9.0",
@@ -2202,7 +2223,7 @@ name = "snarkvm-dpc"
 version = "0.0.4"
 dependencies = [
  "anyhow",
- "blake2",
+ "blake2 0.9.1",
  "criterion",
  "derivative",
  "hex",
@@ -2271,7 +2292,7 @@ dependencies = [
 name = "snarkvm-gadgets"
 version = "0.0.4"
 dependencies = [
- "blake2",
+ "blake2 0.9.1",
  "derivative",
  "digest 0.8.1",
  "itertools 0.10.0",
@@ -2289,7 +2310,7 @@ name = "snarkvm-marlin"
 version = "0.0.1"
 source = "git+https://github.com/AleoHQ/snarkVM.git?rev=81d225a#81d225aca0cdede198a1ef5b30b798b02ced13cc"
 dependencies = [
- "blake2",
+ "blake2 0.8.1",
  "derivative",
  "digest 0.8.1",
  "rand_chacha 0.2.2",
@@ -2307,7 +2328,7 @@ dependencies = [
 name = "snarkvm-marlin"
 version = "0.0.4"
 dependencies = [
- "blake2",
+ "blake2 0.9.1",
  "derivative",
  "digest 0.8.1",
  "rand_chacha 0.2.2",
@@ -2457,7 +2478,7 @@ dependencies = [
 name = "snarkvm-polycommit"
 version = "0.0.4"
 dependencies = [
- "blake2",
+ "blake2 0.9.1",
  "derivative",
  "digest 0.8.1",
  "rand 0.7.3",
@@ -2592,6 +2613,12 @@ name = "subtle"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2d67a5a62ba6e01cb2192ff309324cb4875d0c451d55fe2319433abe7a05a8ee"
+
+[[package]]
+name = "subtle"
+version = "2.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1e81da0851ada1f3e9d4312c704aa4f8806f0f9d69faaf8df2f3464b4a9437c2"
 
 [[package]]
 name = "syn"

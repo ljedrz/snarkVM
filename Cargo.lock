@@ -1643,6 +1643,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "rand_xorshift"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d25bf25ec5ae4a3f1b92f929810509a2f53d7dca2f50b794ff57e3face536c8f"
+dependencies = [
+ "rand_core 0.6.1",
+]
+
+[[package]]
 name = "rayon"
 version = "1.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2113,7 +2122,7 @@ dependencies = [
  "itertools 0.10.0",
  "rand 0.7.3",
  "rand_chacha 0.2.2",
- "rand_xorshift",
+ "rand_xorshift 0.3.0",
  "rayon",
  "sha2",
  "smallvec",
@@ -2131,7 +2140,7 @@ source = "git+https://github.com/AleoHQ/snarkVM.git?rev=81d225a#81d225aca0cdede1
 dependencies = [
  "derivative",
  "rand 0.7.3",
- "rand_xorshift",
+ "rand_xorshift 0.2.0",
  "rustc_version 0.2.3",
  "serde",
  "snarkvm-errors 0.0.1",
@@ -2146,7 +2155,7 @@ dependencies = [
  "criterion",
  "derivative",
  "rand 0.7.3",
- "rand_xorshift",
+ "rand_xorshift 0.3.0",
  "rustc_version 0.3.3",
  "serde",
  "snarkvm-errors 0.0.4",
@@ -2208,7 +2217,7 @@ dependencies = [
  "hex",
  "itertools 0.10.0",
  "rand 0.7.3",
- "rand_xorshift",
+ "rand_xorshift 0.3.0",
  "snarkvm-algorithms 0.0.4",
  "snarkvm-curves 0.0.4",
  "snarkvm-errors 0.0.4",
@@ -2276,7 +2285,7 @@ dependencies = [
  "digest 0.8.1",
  "itertools 0.10.0",
  "rand 0.7.3",
- "rand_xorshift",
+ "rand_xorshift 0.3.0",
  "snarkvm-algorithms 0.0.4",
  "snarkvm-curves 0.0.4",
  "snarkvm-errors 0.0.4",
@@ -2335,7 +2344,7 @@ dependencies = [
  "indexmap",
  "itertools 0.9.0",
  "rand 0.7.3",
- "rand_xorshift",
+ "rand_xorshift 0.2.0",
  "serde",
  "snarkvm-errors 0.0.1",
  "snarkvm-utilities 0.0.1",
@@ -2354,7 +2363,7 @@ dependencies = [
  "indexmap",
  "itertools 0.10.0",
  "rand 0.7.3",
- "rand_xorshift",
+ "rand_xorshift 0.3.0",
  "serde",
  "snarkvm-errors 0.0.4",
  "snarkvm-utilities 0.0.4",
@@ -2511,7 +2520,7 @@ version = "0.0.4"
 dependencies = [
  "once_cell",
  "rand 0.7.3",
- "rand_xorshift",
+ "rand_xorshift 0.3.0",
  "snarkvm-algorithms 0.0.4",
  "snarkvm-curves 0.0.4",
  "snarkvm-dpc 0.0.4",
@@ -2541,7 +2550,7 @@ version = "0.0.4"
 dependencies = [
  "bincode",
  "rand 0.7.3",
- "rand_xorshift",
+ "rand_xorshift 0.3.0",
  "snarkvm-derives 0.0.4",
  "snarkvm-errors 0.0.4",
 ]

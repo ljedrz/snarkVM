@@ -424,7 +424,7 @@ impl<E: PairingEngine> From<VerifyingKey<E>> for PreparedVerifyingKey<E> {
     }
 }
 
-fn push_constraints<F: Field>(l: LinearCombination<F>, constraints: &mut OptionalVec<Vec<(F, Index)>>) {
+fn push_constraints<F: Field>(l: LinearCombination<F>, constraints: &mut OptionalVec<Vec<(F, Index)>>) -> usize {
     let vars_and_coeffs = l.as_ref();
     let mut vec = Vec::with_capacity(vars_and_coeffs.len());
 
@@ -434,5 +434,5 @@ fn push_constraints<F: Field>(l: LinearCombination<F>, constraints: &mut Optiona
             Index::Aux(i) => vec.push((*coeff, Index::Aux(i))),
         }
     }
-    constraints.insert(vec);
+    constraints.insert(vec)
 }

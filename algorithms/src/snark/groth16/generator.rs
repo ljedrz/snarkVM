@@ -116,14 +116,13 @@ impl<E: PairingEngine> ConstraintSystem<E::Fr> for KeypairAssembly<E> {
         LB: FnOnce(LinearCombination<E::Fr>) -> LinearCombination<E::Fr>,
         LC: FnOnce(LinearCombination<E::Fr>) -> LinearCombination<E::Fr>,
     {
-        let constraint_idx = self.num_constraints();
-
-        push_constraints(a(LinearCombination::zero()), &mut self.at);
+        // the indices are aligned; all the constraints are pushed and popped together
+        let idx = push_constraints(a(LinearCombination::zero()), &mut self.at);
         push_constraints(b(LinearCombination::zero()), &mut self.bt);
         push_constraints(c(LinearCombination::zero()), &mut self.ct);
 
         if let Some(ref mut ns) = self.namespaces.last_mut() {
-            ns.constraint_indices.push(constraint_idx);
+            ns.constraint_indices.push(idx);
         }
     }
 

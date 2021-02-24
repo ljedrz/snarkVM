@@ -173,7 +173,7 @@ where
         ct: Default::default(),
         input_assignment: Default::default(),
         aux_assignment: Default::default(),
-        namespaces: Default::default(),
+        namespaces: vec![Default::default()],
     };
 
     // Allocate the "one" input variable

@@ -47,7 +47,7 @@ impl R1CStoQAP {
         assembly: &KeypairAssembly<E>,
         t: &E::Fr,
     ) -> SynthesisResult<(Vec<E::Fr>, Vec<E::Fr>, Vec<E::Fr>, E::Fr, usize, usize)> {
-        let domain_size = assembly.num_constraints() + (assembly.num_inputs - 1) + 1;
+        let domain_size = assembly.num_constraints() + (assembly.num_inputs() - 1) + 1;
         let domain = EvaluationDomain::<E::Fr>::new(domain_size).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
         let domain_size = domain.size();
 
@@ -58,13 +58,13 @@ impl R1CStoQAP {
         let u = domain.evaluate_all_lagrange_coefficients(*t);
         end_timer!(coefficients_time);
 
-        let qap_num_variables = (assembly.num_inputs - 1) + assembly.num_aux;
+        let qap_num_variables = (assembly.num_inputs() - 1) + assembly.num_aux();
 
         let mut a = vec![E::Fr::zero(); qap_num_variables + 1];
         let mut b = vec![E::Fr::zero(); qap_num_variables + 1];
         let mut c = vec![E::Fr::zero(); qap_num_variables + 1];
 
-        for i in 0..assembly.num_inputs {
+        for i in 0..assembly.num_inputs() {
             a[i] = u[assembly.num_constraints() + i];
         }
 
@@ -72,7 +72,7 @@ impl R1CStoQAP {
             for &(ref coeff, index) in assembly.at[i].iter() {
                 let index = match index {
                     Index::Input(i) => i,
-                    Index::Aux(i) => assembly.num_inputs + i,
+                    Index::Aux(i) => assembly.num_inputs() + i,
                 };
 
                 a[index] += &(*x * coeff);
@@ -80,7 +80,7 @@ impl R1CStoQAP {
             for &(ref coeff, index) in assembly.bt[i].iter() {
                 let index = match index {
                     Index::Input(i) => i,
-                    Index::Aux(i) => assembly.num_inputs + i,
+                    Index::Aux(i) => assembly.num_inputs() + i,
                 };
 
                 b[index] += &(u[i] * coeff);
@@ -88,7 +88,7 @@ impl R1CStoQAP {
             for &(ref coeff, index) in assembly.ct[i].iter() {
                 let index = match index {
                     Index::Input(i) => i,
-                    Index::Aux(i) => assembly.num_inputs + i,
+                    Index::Aux(i) => assembly.num_inputs() + i,
                 };
 
                 c[index] += &(u[i] * coeff);

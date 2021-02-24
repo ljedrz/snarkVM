@@ -51,19 +51,31 @@ where
 #[derive(Default, Debug)]
 pub struct Namespace {
     constraint_indices: Vec<usize>,
-    num_aux: usize,
-    num_inputs: usize,
+    input_indices: Vec<usize>,
+    aux_indices: Vec<usize>,
 }
 
 /// This is our assembly structure that we'll use to synthesize the
 /// circuit into a QAP.
 pub struct KeypairAssembly<E: PairingEngine> {
-    pub num_inputs: usize,
-    pub num_aux: usize,
     pub at: OptionalVec<Vec<(E::Fr, Index)>>,
     pub bt: OptionalVec<Vec<(E::Fr, Index)>>,
     pub ct: OptionalVec<Vec<(E::Fr, Index)>>,
+
+    input_accounting: OptionalVec<()>,
+    aux_accounting: OptionalVec<()>,
+
     namespaces: Vec<Namespace>,
+}
+
+impl<E: PairingEngine> KeypairAssembly<E> {
+    pub fn num_inputs(&self) -> usize {
+        self.input_accounting.len()
+    }
+
+    pub fn num_aux(&self) -> usize {
+        self.aux_accounting.len()
+    }
 }
 
 impl<E: PairingEngine> ConstraintSystem<E::Fr> for KeypairAssembly<E> {
@@ -79,10 +91,9 @@ impl<E: PairingEngine> ConstraintSystem<E::Fr> for KeypairAssembly<E> {
         // There is no assignment, so we don't invoke the
         // function for obtaining one.
 
-        let index = self.num_aux;
-        self.num_aux += 1;
+        let index = self.aux_accounting.insert(());
         if let Some(ref mut ns) = self.namespaces.last_mut() {
-            ns.num_aux += 1;
+            ns.aux_indices.push(index);
         }
 
         Ok(Variable::new_unchecked(Index::Aux(index)))
@@ -98,10 +109,9 @@ impl<E: PairingEngine> ConstraintSystem<E::Fr> for KeypairAssembly<E> {
         // There is no assignment, so we don't invoke the
         // function for obtaining one.
 
-        let index = self.num_inputs;
-        self.num_inputs += 1;
+        let index = self.input_accounting.insert(());
         if let Some(ref mut ns) = self.namespaces.last_mut() {
-            ns.num_inputs += 1;
+            ns.input_indices.push(index);
         }
 
         Ok(Variable::new_unchecked(Index::Input(index)))
@@ -142,8 +152,13 @@ impl<E: PairingEngine> ConstraintSystem<E::Fr> for KeypairAssembly<E> {
                 self.ct.remove(idx);
             }
 
-            self.num_aux -= ns.num_aux;
-            self.num_inputs -= ns.num_inputs;
+            for idx in ns.aux_indices {
+                self.aux_accounting.remove(idx);
+            }
+
+            for idx in ns.input_indices {
+                self.input_accounting.remove(idx);
+            }
         }
     }
 
@@ -172,12 +187,12 @@ where
     R: Rng,
 {
     let mut assembly = KeypairAssembly {
-        num_inputs: 0,
-        num_aux: 0,
         at: Default::default(),
         bt: Default::default(),
         ct: Default::default(),
-        namespaces: Default::default(),
+        input_accounting: Default::default(),
+        aux_accounting: Default::default(),
+        namespaces: vec![Default::default()],
     };
 
     // Allocate the "one" input variable
@@ -191,7 +206,7 @@ where
     ///////////////////////////////////////////////////////////////////////////
     let domain_time = start_timer!(|| "Constructing evaluation domain");
 
-    let domain_size = assembly.num_constraints() + (assembly.num_inputs - 1) + 1;
+    let domain_size = assembly.num_constraints() + (assembly.num_inputs() - 1) + 1;
     let domain = EvaluationDomain::<E::Fr>::new(domain_size).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
     let t = domain.sample_element_outside_domain(rng);
 
@@ -216,9 +231,9 @@ where
     let gamma_inverse = gamma.inverse().ok_or(SynthesisError::UnexpectedIdentity)?;
     let delta_inverse = delta.inverse().ok_or(SynthesisError::UnexpectedIdentity)?;
 
-    let gamma_abc = cfg_iter!(a[0..assembly.num_inputs])
-        .zip(&b[0..assembly.num_inputs])
-        .zip(&c[0..assembly.num_inputs])
+    let gamma_abc = cfg_iter!(a[0..assembly.num_inputs()])
+        .zip(&b[0..assembly.num_inputs()])
+        .zip(&c[0..assembly.num_inputs()])
         .map(|((a, b), c)| (beta * a + &(alpha * b) + c) * &gamma_inverse)
         .collect::<Vec<_>>();
 
@@ -283,7 +298,7 @@ where
     // Compute the L-query
     let l_time = start_timer!(|| "Calculate L");
     let l_query = FixedBaseMSM::multi_scalar_mul::<E::G1Projective>(scalar_bits, g1_window, &g1_table, &l);
-    let mut l_query = l_query[assembly.num_inputs..].to_vec();
+    let mut l_query = l_query[assembly.num_inputs()..].to_vec();
     end_timer!(l_time);
 
     end_timer!(proving_key_time);

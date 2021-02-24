@@ -21,7 +21,10 @@
 use snarkvm_errors::serialization::SerializationError;
 use snarkvm_models::{
     curves::{AffineCurve, Field, PairingCurve, PairingEngine},
-    gadgets::r1cs::{Index, LinearCombination},
+    gadgets::{
+        r1cs::{Index, LinearCombination},
+        utilities::OptionalVec,
+    },
 };
 use snarkvm_utilities::{serialize::*, FromBytes, ToBytes};
 
@@ -432,4 +435,17 @@ fn push_constraints<F: Field>(l: LinearCombination<F>, constraints: &mut Vec<Vec
         }
     }
     constraints.push(vec);
+}
+
+fn push_constraints_optvec<F: Field>(l: LinearCombination<F>, constraints: &mut OptionalVec<Vec<(F, Index)>>) {
+    let vars_and_coeffs = l.as_ref();
+    let mut vec = Vec::with_capacity(vars_and_coeffs.len());
+
+    for (var, coeff) in vars_and_coeffs {
+        match var.get_unchecked() {
+            Index::Input(i) => vec.push((*coeff, Index::Input(i))),
+            Index::Aux(i) => vec.push((*coeff, Index::Aux(i))),
+        }
+    }
+    constraints.insert(vec);
 }

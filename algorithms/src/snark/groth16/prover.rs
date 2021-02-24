@@ -14,30 +14,42 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use super::{push_constraints, r1cs_to_qap::R1CStoQAP, Parameters, Proof};
+use super::{push_constraints_optvec, r1cs_to_qap::R1CStoQAP, Parameters, Proof};
 use crate::{cfg_into_iter, msm::VariableBaseMSM};
 use snarkvm_errors::gadgets::SynthesisError;
 use snarkvm_models::{
     curves::{AffineCurve, Group, One, PairingEngine, PrimeField, ProjectiveCurve, Zero},
-    gadgets::r1cs::{ConstraintSynthesizer, ConstraintSystem, Index, LinearCombination, Variable},
+    gadgets::{
+        r1cs::{ConstraintSynthesizer, ConstraintSystem, Index, LinearCombination, Variable},
+        utilities::OptionalVec,
+    },
 };
 use snarkvm_profiler::{end_timer, start_timer};
 use snarkvm_utilities::rand::UniformRand;
 
 use rand::Rng;
 
+#[derive(Default)]
+pub struct Namespace {
+    constraint_indices: Vec<usize>,
+    input_indices: Vec<usize>,
+    aux_indices: Vec<usize>,
+}
+
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
 
 pub struct ProvingAssignment<E: PairingEngine> {
     // Constraints
-    pub(crate) at: Vec<Vec<(E::Fr, Index)>>,
-    pub(crate) bt: Vec<Vec<(E::Fr, Index)>>,
-    pub(crate) ct: Vec<Vec<(E::Fr, Index)>>,
+    pub(crate) at: OptionalVec<Vec<(E::Fr, Index)>>,
+    pub(crate) bt: OptionalVec<Vec<(E::Fr, Index)>>,
+    pub(crate) ct: OptionalVec<Vec<(E::Fr, Index)>>,
 
     // Assignments of variables
-    pub(crate) input_assignment: Vec<E::Fr>,
-    pub(crate) aux_assignment: Vec<E::Fr>,
+    pub(crate) input_assignment: OptionalVec<E::Fr>,
+    pub(crate) aux_assignment: OptionalVec<E::Fr>,
+
+    pub(crate) namespaces: Vec<Namespace>,
 }
 
 impl<E: PairingEngine> ConstraintSystem<E::Fr> for ProvingAssignment<E> {
@@ -51,7 +63,10 @@ impl<E: PairingEngine> ConstraintSystem<E::Fr> for ProvingAssignment<E> {
         AR: AsRef<str>,
     {
         let index = self.aux_assignment.len();
-        self.aux_assignment.push(f()?);
+        self.aux_assignment.insert(f()?);
+        if let Some(ref mut ns) = self.namespaces.last_mut() {
+            ns.aux_indices.push(index);
+        }
         Ok(Variable::new_unchecked(Index::Aux(index)))
     }
 
@@ -63,7 +78,10 @@ impl<E: PairingEngine> ConstraintSystem<E::Fr> for ProvingAssignment<E> {
         AR: AsRef<str>,
     {
         let index = self.input_assignment.len();
-        self.input_assignment.push(f()?);
+        self.input_assignment.insert(f()?);
+        if let Some(ref mut ns) = self.namespaces.last_mut() {
+            ns.input_indices.push(index);
+        }
         Ok(Variable::new_unchecked(Index::Input(index)))
     }
 
@@ -76,9 +94,15 @@ impl<E: PairingEngine> ConstraintSystem<E::Fr> for ProvingAssignment<E> {
         LB: FnOnce(LinearCombination<E::Fr>) -> LinearCombination<E::Fr>,
         LC: FnOnce(LinearCombination<E::Fr>) -> LinearCombination<E::Fr>,
     {
-        push_constraints(a(LinearCombination::zero()), &mut self.at);
-        push_constraints(b(LinearCombination::zero()), &mut self.bt);
-        push_constraints(c(LinearCombination::zero()), &mut self.ct);
+        let constraint_idx = self.num_constraints();
+
+        push_constraints_optvec(a(LinearCombination::zero()), &mut self.at);
+        push_constraints_optvec(b(LinearCombination::zero()), &mut self.bt);
+        push_constraints_optvec(c(LinearCombination::zero()), &mut self.ct);
+
+        if let Some(ref mut ns) = self.namespaces.last_mut() {
+            ns.constraint_indices.push(constraint_idx);
+        }
     }
 
     fn push_namespace<NR, N>(&mut self, _: N)
@@ -86,11 +110,25 @@ impl<E: PairingEngine> ConstraintSystem<E::Fr> for ProvingAssignment<E> {
         NR: AsRef<str>,
         N: FnOnce() -> NR,
     {
-        // Do nothing; we don't care about namespaces in this context.
+        self.namespaces.push(Default::default());
     }
 
     fn pop_namespace(&mut self) {
-        // Do nothing; we don't care about namespaces in this context.
+        if let Some(ns) = self.namespaces.pop() {
+            for idx in ns.constraint_indices {
+                self.at.remove(idx);
+                self.bt.remove(idx);
+                self.ct.remove(idx);
+            }
+
+            for idx in ns.aux_indices {
+                self.aux_assignment.remove(idx);
+            }
+
+            for idx in ns.input_indices {
+                self.input_assignment.remove(idx);
+            }
+        }
     }
 
     fn get_root(&mut self) -> &mut Self::Root {
@@ -133,11 +171,12 @@ where
 {
     let prover_time = start_timer!(|| "Prover");
     let mut prover = ProvingAssignment {
-        at: vec![],
-        bt: vec![],
-        ct: vec![],
-        input_assignment: vec![],
-        aux_assignment: vec![],
+        at: Default::default(),
+        bt: Default::default(),
+        ct: Default::default(),
+        input_assignment: Default::default(),
+        aux_assignment: Default::default(),
+        namespaces: Default::default(),
     };
 
     // Allocate the "one" input variable

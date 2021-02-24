@@ -104,7 +104,12 @@ impl R1CStoQAP {
         let num_inputs = prover.input_assignment.len();
         let num_constraints = prover.num_constraints();
 
-        let full_input_assignment = [&prover.input_assignment[..], &prover.aux_assignment[..]].concat();
+        let full_input_assignment = prover
+            .input_assignment
+            .iter()
+            .chain(prover.aux_assignment.iter())
+            .cloned()
+            .collect::<Vec<_>>();
 
         let domain = EvaluationDomain::<E::Fr>::new(num_constraints + num_inputs)
             .ok_or(SynthesisError::PolynomialDegreeTooLarge)?;

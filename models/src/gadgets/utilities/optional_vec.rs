@@ -77,6 +77,12 @@ impl<T> OptionalVec<T> {
         self.values.iter().filter(|v| v.is_some()).map(|v| v.as_ref().unwrap())
     }
 
+    /// Consumes the `OptionalVec`, returning an iterator over all the `Some(T)` values in the list.
+    #[inline]
+    pub fn into_iter(self) -> impl Iterator<Item = T> {
+        self.values.into_iter().filter(|v| v.is_some()).map(|v| v.unwrap())
+    }
+
     /// Returns the number of `Some(T)` values.
     #[inline]
     pub fn len(&self) -> usize {

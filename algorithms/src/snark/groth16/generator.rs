@@ -16,10 +16,13 @@
 
 use super::{push_constraints, r1cs_to_qap::R1CStoQAP, Parameters, VerifyingKey};
 use crate::{cfg_into_iter, cfg_iter, fft::EvaluationDomain, msm::FixedBaseMSM};
-use snarkvm_errors::{gadgets::SynthesisError, serialization::SerializationError};
+use snarkvm_errors::gadgets::SynthesisError;
 use snarkvm_models::{
     curves::{Field, Group, One, PairingEngine, PrimeField, ProjectiveCurve, Zero},
-    gadgets::r1cs::{ConstraintSynthesizer, ConstraintSystem, Index, LinearCombination, Variable},
+    gadgets::{
+        r1cs::{ConstraintSynthesizer, ConstraintSystem, Index, LinearCombination, Variable},
+        utilities::OptionalVec,
+    },
 };
 use snarkvm_profiler::{end_timer, start_timer};
 use snarkvm_utilities::{rand::UniformRand, serialize::*};
@@ -45,15 +48,22 @@ where
     generate_parameters::<E, C, R>(circuit, alpha, beta, gamma, delta, rng)
 }
 
+#[derive(Default, Debug)]
+pub struct Namespace {
+    constraint_indices: Vec<usize>,
+    num_aux: usize,
+    num_inputs: usize,
+}
+
 /// This is our assembly structure that we'll use to synthesize the
 /// circuit into a QAP.
-#[derive(Clone, Debug, CanonicalSerialize, CanonicalDeserialize)]
 pub struct KeypairAssembly<E: PairingEngine> {
     pub num_inputs: usize,
     pub num_aux: usize,
-    pub at: Vec<Vec<(E::Fr, Index)>>,
-    pub bt: Vec<Vec<(E::Fr, Index)>>,
-    pub ct: Vec<Vec<(E::Fr, Index)>>,
+    pub at: OptionalVec<Vec<(E::Fr, Index)>>,
+    pub bt: OptionalVec<Vec<(E::Fr, Index)>>,
+    pub ct: OptionalVec<Vec<(E::Fr, Index)>>,
+    namespaces: Vec<Namespace>,
 }
 
 impl<E: PairingEngine> ConstraintSystem<E::Fr> for KeypairAssembly<E> {
@@ -71,6 +81,9 @@ impl<E: PairingEngine> ConstraintSystem<E::Fr> for KeypairAssembly<E> {
 
         let index = self.num_aux;
         self.num_aux += 1;
+        if let Some(ref mut ns) = self.namespaces.last_mut() {
+            ns.num_aux += 1;
+        }
 
         Ok(Variable::new_unchecked(Index::Aux(index)))
     }
@@ -87,6 +100,9 @@ impl<E: PairingEngine> ConstraintSystem<E::Fr> for KeypairAssembly<E> {
 
         let index = self.num_inputs;
         self.num_inputs += 1;
+        if let Some(ref mut ns) = self.namespaces.last_mut() {
+            ns.num_inputs += 1;
+        }
 
         Ok(Variable::new_unchecked(Index::Input(index)))
     }
@@ -100,9 +116,15 @@ impl<E: PairingEngine> ConstraintSystem<E::Fr> for KeypairAssembly<E> {
         LB: FnOnce(LinearCombination<E::Fr>) -> LinearCombination<E::Fr>,
         LC: FnOnce(LinearCombination<E::Fr>) -> LinearCombination<E::Fr>,
     {
+        let constraint_idx = self.num_constraints();
+
         push_constraints(a(LinearCombination::zero()), &mut self.at);
         push_constraints(b(LinearCombination::zero()), &mut self.bt);
         push_constraints(c(LinearCombination::zero()), &mut self.ct);
+
+        if let Some(ref mut ns) = self.namespaces.last_mut() {
+            ns.constraint_indices.push(constraint_idx);
+        }
     }
 
     fn push_namespace<NR, N>(&mut self, _: N)
@@ -110,11 +132,20 @@ impl<E: PairingEngine> ConstraintSystem<E::Fr> for KeypairAssembly<E> {
         NR: AsRef<str>,
         N: FnOnce() -> NR,
     {
-        // Do nothing; we don't care about namespaces in this context.
+        self.namespaces.push(Default::default());
     }
 
     fn pop_namespace(&mut self) {
-        // Do nothing; we don't care about namespaces in this context.
+        if let Some(ns) = self.namespaces.pop() {
+            for idx in ns.constraint_indices {
+                self.at.remove(idx);
+                self.bt.remove(idx);
+                self.ct.remove(idx);
+            }
+
+            self.num_aux -= ns.num_aux;
+            self.num_inputs -= ns.num_inputs;
+        }
     }
 
     fn get_root(&mut self) -> &mut Self::Root {
@@ -144,9 +175,10 @@ where
     let mut assembly = KeypairAssembly {
         num_inputs: 0,
         num_aux: 0,
-        at: vec![],
-        bt: vec![],
-        ct: vec![],
+        at: Default::default(),
+        bt: Default::default(),
+        ct: Default::default(),
+        namespaces: Default::default(),
     };
 
     // Allocate the "one" input variable

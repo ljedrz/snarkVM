@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use super::{push_constraints_optvec, r1cs_to_qap::R1CStoQAP, Parameters, Proof};
+use super::{push_constraints, r1cs_to_qap::R1CStoQAP, Parameters, Proof};
 use crate::{cfg_into_iter, msm::VariableBaseMSM};
 use snarkvm_errors::gadgets::SynthesisError;
 use snarkvm_models::{
@@ -96,9 +96,9 @@ impl<E: PairingEngine> ConstraintSystem<E::Fr> for ProvingAssignment<E> {
     {
         let constraint_idx = self.num_constraints();
 
-        push_constraints_optvec(a(LinearCombination::zero()), &mut self.at);
-        push_constraints_optvec(b(LinearCombination::zero()), &mut self.bt);
-        push_constraints_optvec(c(LinearCombination::zero()), &mut self.ct);
+        push_constraints(a(LinearCombination::zero()), &mut self.at);
+        push_constraints(b(LinearCombination::zero()), &mut self.bt);
+        push_constraints(c(LinearCombination::zero()), &mut self.ct);
 
         if let Some(ref mut ns) = self.namespaces.last_mut() {
             ns.constraint_indices.push(constraint_idx);

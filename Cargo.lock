@@ -1597,6 +1597,75 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fe0f37c9e8f3c5a4a66ad655a93c74daac4ad00c441533bf5c6e7990bb42604e"
 
 [[package]]
+name = "snarkos-consensus"
+version = "1.1.4"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "hex",
+ "parking_lot",
+ "rand",
+ "snarkos-profiler",
+ "snarkos-storage",
+ "snarkvm-algorithms",
+ "snarkvm-curves",
+ "snarkvm-dpc",
+ "snarkvm-errors",
+ "snarkvm-models",
+ "snarkvm-objects",
+ "snarkvm-posw",
+ "snarkvm-utilities",
+ "thiserror",
+ "tracing",
+]
+
+[[package]]
+name = "snarkos-profiler"
+version = "1.1.4"
+
+[[package]]
+name = "snarkos-storage"
+version = "1.1.4"
+dependencies = [
+ "anyhow",
+ "bincode",
+ "hex",
+ "parking_lot",
+ "rand",
+ "serde",
+ "snarkvm-algorithms",
+ "snarkvm-errors",
+ "snarkvm-models",
+ "snarkvm-objects",
+ "snarkvm-parameters",
+ "snarkvm-utilities",
+ "thiserror",
+]
+
+[[package]]
+name = "snarkos-testing"
+version = "1.1.4"
+dependencies = [
+ "anyhow",
+ "bincode",
+ "once_cell",
+ "parking_lot",
+ "rand",
+ "rand_xorshift",
+ "snarkos-consensus",
+ "snarkos-storage",
+ "snarkvm-algorithms",
+ "snarkvm-curves",
+ "snarkvm-dpc",
+ "snarkvm-errors",
+ "snarkvm-models",
+ "snarkvm-objects",
+ "snarkvm-parameters",
+ "snarkvm-posw",
+ "snarkvm-utilities",
+]
+
+[[package]]
 name = "snarkvm"
 version = "0.0.5"
 dependencies = [
@@ -1676,7 +1745,6 @@ dependencies = [
  "snarkvm-objects",
  "snarkvm-parameters",
  "snarkvm-profiler",
- "snarkvm-testing",
  "snarkvm-utilities",
 ]
 
@@ -1833,42 +1901,27 @@ dependencies = [
 ]
 
 [[package]]
-name = "snarkvm-storage"
+name = "snarkvm-snarkos-integration"
 version = "0.0.5"
 dependencies = [
  "anyhow",
- "bincode",
+ "blake2 0.9.1",
+ "derivative",
  "hex",
- "parking_lot",
- "rand",
- "serde",
- "snarkvm-algorithms",
- "snarkvm-curves",
- "snarkvm-errors",
- "snarkvm-models",
- "snarkvm-objects",
- "snarkvm-parameters",
- "snarkvm-testing",
- "snarkvm-utilities",
- "thiserror",
-]
-
-[[package]]
-name = "snarkvm-testing"
-version = "0.0.5"
-dependencies = [
- "once_cell",
- "parking_lot",
+ "itertools 0.10.0",
  "rand",
  "rand_xorshift",
+ "snarkos-storage",
+ "snarkos-testing",
  "snarkvm-algorithms",
  "snarkvm-curves",
  "snarkvm-dpc",
  "snarkvm-errors",
+ "snarkvm-gadgets",
  "snarkvm-models",
  "snarkvm-objects",
  "snarkvm-parameters",
- "snarkvm-storage",
+ "snarkvm-profiler",
  "snarkvm-utilities",
 ]
 
@@ -2105,6 +2158,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f7d40a22fd029e33300d8d89a5cc8ffce18bb7c587662f54629e94c9de5487f3"
 dependencies = [
  "cfg-if",
+ "log",
  "pin-project-lite",
  "tracing-core",
 ]

@@ -14,21 +14,25 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use super::instantiated::*;
-use crate::base_dpc::{
-    execute_inner_proof_gadget,
-    execute_outer_proof_gadget,
-    inner_circuit::InnerCircuit,
-    parameters::{NoopProgramSNARKParameters, SystemParameters},
-    program::*,
-    record::record_encryption::*,
-    record_payload::RecordPayload,
-    BaseDPCComponents,
-    TransactionKernel,
-    DPC,
-};
+use snarkos_storage::mem::MemDb;
+use snarkos_testing::storage::*;
 use snarkvm_algorithms::merkle_tree::MerklePath;
 use snarkvm_curves::bls12_377::{Fq, Fr};
+use snarkvm_dpc::{
+    base_dpc::{
+        execute_inner_proof_gadget,
+        execute_outer_proof_gadget,
+        inner_circuit::InnerCircuit,
+        parameters::{NoopProgramSNARKParameters, SystemParameters},
+        program::*,
+        record::record_encryption::*,
+        record_payload::RecordPayload,
+        BaseDPCComponents,
+        TransactionKernel,
+        DPC,
+    },
+    instantiated::*,
+};
 use snarkvm_models::{
     algorithms::{MerkleParameters, CRH, SNARK},
     dpc::{DPCScheme, Program, Record},
@@ -45,7 +49,6 @@ use snarkvm_objects::{
     PedersenMerkleRootHash,
     ProofOfSuccinctWork,
 };
-use snarkvm_testing::storage::*;
 use snarkvm_utilities::{
     bytes::{FromBytes, ToBytes},
     to_bytes,

@@ -32,8 +32,7 @@ members = [
   "polycommit",
   "posw",
   "profiler",
-  "storage",
-  "testing",
+  "snarkos_integration",
   "utilities"
 ]
 

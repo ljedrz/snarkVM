@@ -14,13 +14,21 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use super::{push_constraints, r1cs_to_qap::R1CStoQAP, Parameters, VerifyingKey};
+use super::{push_constraints_opt, r1cs_to_qap::R1CStoQAP, Parameters, VerifyingKey};
 use crate::{cfg_into_iter, cfg_iter, fft::EvaluationDomain, msm::FixedBaseMSM};
 use snarkvm_curves::traits::{Group, PairingEngine, ProjectiveCurve};
 use snarkvm_fields::{Field, One, PrimeField, Zero};
 use snarkvm_profiler::{end_timer, start_timer};
-use snarkvm_r1cs::{ConstraintSynthesizer, ConstraintSystem, Index, LinearCombination, SynthesisError, Variable};
-use snarkvm_utilities::{errors::SerializationError, rand::UniformRand, serialize::*};
+use snarkvm_r1cs::{
+    ConstraintSynthesizer,
+    ConstraintSystem,
+    Index,
+    LinearCombination,
+    OptionalVec,
+    SynthesisError,
+    Variable,
+};
+use snarkvm_utilities::{rand::UniformRand, serialize::*};
 
 use rand::Rng;
 
@@ -43,15 +51,22 @@ where
     generate_parameters::<E, C, R>(circuit, alpha, beta, gamma, delta, rng)
 }
 
+#[derive(Default)]
+pub struct Namespace {
+    public_variable_indices: Vec<usize>,
+    private_variable_indices: Vec<usize>,
+    constraint_indices: Vec<usize>,
+}
+
 /// This is our assembly structure that we'll use to synthesize the
 /// circuit into a QAP.
-#[derive(Clone, Debug, CanonicalSerialize, CanonicalDeserialize)]
 pub struct KeypairAssembly<E: PairingEngine> {
-    pub num_public_variables: usize,
-    pub num_private_variables: usize,
-    pub at: Vec<Vec<(E::Fr, Index)>>,
-    pub bt: Vec<Vec<(E::Fr, Index)>>,
-    pub ct: Vec<Vec<(E::Fr, Index)>>,
+    pub public_variables: OptionalVec<()>,
+    pub private_variables: OptionalVec<()>,
+    pub at: OptionalVec<Vec<(E::Fr, Index)>>,
+    pub bt: OptionalVec<Vec<(E::Fr, Index)>>,
+    pub ct: OptionalVec<Vec<(E::Fr, Index)>>,
+    pub namespaces: Vec<Namespace>,
 }
 
 impl<E: PairingEngine> ConstraintSystem<E::Fr> for KeypairAssembly<E> {
@@ -67,9 +82,10 @@ impl<E: PairingEngine> ConstraintSystem<E::Fr> for KeypairAssembly<E> {
         // There is no assignment, so we don't invoke the
         // function for obtaining one.
 
-        let index = self.num_private_variables;
-        self.num_private_variables += 1;
-
+        let index = self.private_variables.insert(());
+        if let Some(ref mut ns) = self.namespaces.last_mut() {
+            ns.private_variable_indices.push(index);
+        }
         Ok(Variable::new_unchecked(Index::Private(index)))
     }
 
@@ -83,9 +99,10 @@ impl<E: PairingEngine> ConstraintSystem<E::Fr> for KeypairAssembly<E> {
         // There is no assignment, so we don't invoke the
         // function for obtaining one.
 
-        let index = self.num_public_variables;
-        self.num_public_variables += 1;
-
+        let index = self.public_variables.insert(());
+        if let Some(ref mut ns) = self.namespaces.last_mut() {
+            ns.public_variable_indices.push(index);
+        }
         Ok(Variable::new_unchecked(Index::Public(index)))
     }
 
@@ -98,9 +115,17 @@ impl<E: PairingEngine> ConstraintSystem<E::Fr> for KeypairAssembly<E> {
         LB: FnOnce(LinearCombination<E::Fr>) -> LinearCombination<E::Fr>,
         LC: FnOnce(LinearCombination<E::Fr>) -> LinearCombination<E::Fr>,
     {
-        push_constraints(a(LinearCombination::zero()), &mut self.at);
-        push_constraints(b(LinearCombination::zero()), &mut self.bt);
-        push_constraints(c(LinearCombination::zero()), &mut self.ct);
+        let index = self.at.insert(Vec::new());
+        self.bt.insert(Vec::new());
+        self.ct.insert(Vec::new());
+
+        push_constraints_opt(a(LinearCombination::zero()), &mut self.at, index);
+        push_constraints_opt(b(LinearCombination::zero()), &mut self.bt, index);
+        push_constraints_opt(c(LinearCombination::zero()), &mut self.ct, index);
+
+        if let Some(ref mut ns) = self.namespaces.last_mut() {
+            ns.constraint_indices.push(index);
+        }
     }
 
     fn push_namespace<NR, N>(&mut self, _: N)
@@ -108,11 +133,25 @@ impl<E: PairingEngine> ConstraintSystem<E::Fr> for KeypairAssembly<E> {
         NR: AsRef<str>,
         N: FnOnce() -> NR,
     {
-        // Do nothing; we don't care about namespaces in this context.
+        self.namespaces.push(Namespace::default());
     }
 
     fn pop_namespace(&mut self) {
-        // Do nothing; we don't care about namespaces in this context.
+        if let Some(ns) = self.namespaces.pop() {
+            for idx in ns.private_variable_indices {
+                self.private_variables.remove(idx);
+            }
+
+            for idx in ns.public_variable_indices {
+                self.public_variables.remove(idx);
+            }
+
+            for idx in ns.constraint_indices {
+                self.at.remove(idx);
+                self.bt.remove(idx);
+                self.ct.remove(idx);
+            }
+        }
     }
 
     fn get_root(&mut self) -> &mut Self::Root {
@@ -124,11 +163,11 @@ impl<E: PairingEngine> ConstraintSystem<E::Fr> for KeypairAssembly<E> {
     }
 
     fn num_public_variables(&self) -> usize {
-        self.num_public_variables
+        self.public_variables.len()
     }
 
     fn num_private_variables(&self) -> usize {
-        self.num_private_variables
+        self.private_variables.len()
     }
 }
 
@@ -148,11 +187,12 @@ where
     R: Rng,
 {
     let mut assembly = KeypairAssembly {
-        num_public_variables: 0,
-        num_private_variables: 0,
-        at: vec![],
-        bt: vec![],
-        ct: vec![],
+        public_variables: Default::default(),
+        private_variables: Default::default(),
+        at: Default::default(),
+        bt: Default::default(),
+        ct: Default::default(),
+        namespaces: Default::default(),
     };
 
     // Allocate the "one" input variable
@@ -166,7 +206,7 @@ where
     ///////////////////////////////////////////////////////////////////////////
     let domain_time = start_timer!(|| "Constructing evaluation domain");
 
-    let domain_size = assembly.num_constraints() + (assembly.num_public_variables - 1) + 1;
+    let domain_size = assembly.num_constraints() + (assembly.num_public_variables() - 1) + 1;
     let domain = EvaluationDomain::<E::Fr>::new(domain_size).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
     let t = domain.sample_element_outside_domain(rng);
 
@@ -191,9 +231,9 @@ where
     let gamma_inverse = gamma.inverse().ok_or(SynthesisError::UnexpectedIdentity)?;
     let delta_inverse = delta.inverse().ok_or(SynthesisError::UnexpectedIdentity)?;
 
-    let gamma_abc = cfg_iter!(a[0..assembly.num_public_variables])
-        .zip(&b[0..assembly.num_public_variables])
-        .zip(&c[0..assembly.num_public_variables])
+    let gamma_abc = cfg_iter!(a[0..assembly.num_public_variables()])
+        .zip(&b[0..assembly.num_public_variables()])
+        .zip(&c[0..assembly.num_public_variables()])
         .map(|((a, b), c)| (beta * a + &(alpha * b) + c) * &gamma_inverse)
         .collect::<Vec<_>>();
 
@@ -258,7 +298,7 @@ where
     // Compute the L-query
     let l_time = start_timer!(|| "Calculate L");
     let l_query = FixedBaseMSM::multi_scalar_mul::<E::G1Projective>(scalar_bits, g1_window, &g1_table, &l);
-    let mut l_query = l_query[assembly.num_public_variables..].to_vec();
+    let mut l_query = l_query[assembly.num_public_variables()..].to_vec();
     end_timer!(l_time);
 
     end_timer!(proving_key_time);

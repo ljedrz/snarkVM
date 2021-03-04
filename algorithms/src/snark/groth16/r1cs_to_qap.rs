@@ -49,7 +49,7 @@ impl R1CStoQAP {
         assembly: &KeypairAssembly<E>,
         t: &E::Fr,
     ) -> SynthesisResult<(Vec<E::Fr>, Vec<E::Fr>, Vec<E::Fr>, E::Fr, usize, usize)> {
-        let domain_size = assembly.num_constraints() + (assembly.num_public_variables - 1) + 1;
+        let domain_size = assembly.num_constraints() + (assembly.num_public_variables() - 1) + 1;
         let domain = EvaluationDomain::<E::Fr>::new(domain_size).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
         let domain_size = domain.size();
 
@@ -60,13 +60,13 @@ impl R1CStoQAP {
         let u = domain.evaluate_all_lagrange_coefficients(*t);
         end_timer!(coefficients_time);
 
-        let qap_num_variables = (assembly.num_public_variables - 1) + assembly.num_private_variables;
+        let qap_num_variables = (assembly.num_public_variables() - 1) + assembly.num_private_variables();
 
         let mut a = vec![E::Fr::zero(); qap_num_variables + 1];
         let mut b = vec![E::Fr::zero(); qap_num_variables + 1];
         let mut c = vec![E::Fr::zero(); qap_num_variables + 1];
 
-        for i in 0..assembly.num_public_variables {
+        for i in 0..assembly.num_public_variables() {
             a[i] = u[assembly.num_constraints() + i];
         }
 
@@ -74,7 +74,7 @@ impl R1CStoQAP {
             for &(ref coeff, index) in assembly.at[i].iter() {
                 let index = match index {
                     Index::Public(i) => i,
-                    Index::Private(i) => assembly.num_public_variables + i,
+                    Index::Private(i) => assembly.num_public_variables() + i,
                 };
 
                 a[index] += &(*x * coeff);
@@ -82,7 +82,7 @@ impl R1CStoQAP {
             for &(ref coeff, index) in assembly.bt[i].iter() {
                 let index = match index {
                     Index::Public(i) => i,
-                    Index::Private(i) => assembly.num_public_variables + i,
+                    Index::Private(i) => assembly.num_public_variables() + i,
                 };
 
                 b[index] += &(u[i] * coeff);
@@ -90,7 +90,7 @@ impl R1CStoQAP {
             for &(ref coeff, index) in assembly.ct[i].iter() {
                 let index = match index {
                     Index::Public(i) => i,
-                    Index::Private(i) => assembly.num_public_variables + i,
+                    Index::Private(i) => assembly.num_public_variables() + i,
                 };
 
                 c[index] += &(u[i] * coeff);

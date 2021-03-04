@@ -20,7 +20,7 @@
 
 use snarkvm_curves::traits::{AffineCurve, PairingCurve, PairingEngine};
 use snarkvm_fields::Field;
-use snarkvm_r1cs::{Index, LinearCombination};
+use snarkvm_r1cs::{Index, LinearCombination, OptionalVec};
 use snarkvm_utilities::{errors::SerializationError, serialize::*, FromBytes, ToBytes};
 
 use std::io::{
@@ -435,4 +435,17 @@ fn push_constraints<F: Field>(l: LinearCombination<F>, constraints: &mut Vec<Vec
         }
     }
     constraints.push(vec);
+}
+
+fn push_constraints_opt<F: Field>(
+    l: LinearCombination<F>,
+    constraints: &mut OptionalVec<Vec<(F, Index)>>,
+    this_constraint: usize,
+) {
+    for (var, coeff) in l.as_ref() {
+        match var.get_unchecked() {
+            Index::Public(i) => constraints[this_constraint].push((*coeff, Index::Public(i))),
+            Index::Private(i) => constraints[this_constraint].push((*coeff, Index::Private(i))),
+        }
+    }
 }

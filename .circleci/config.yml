@@ -58,6 +58,15 @@ jobs:
           paths: project/
       - clear_environment:
           cache_key: snarkvm-stable-cache
+  snarkos_integration:
+    docker:
+      - image: cimg/rust:1.49.0
+    resource_class: xlarge
+    steps:
+      - run:
+          name: Run DPC integration tests
+          no_output_timeout: 30m
+          command: cd snarkos-integration && RUST_MIN_STACK=8388608 cargo test --release
   codecov:
     machine:
       image: ubuntu-1604:202004-01

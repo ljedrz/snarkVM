@@ -1,8 +1,8 @@
 [package]
-name = "snarkvm-dpc"
+name = "snarkvm-snarkos-integration"
 version = "0.2.0"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
-description = "DPC for a decentralized virtual machine"
+description = "A test suite for functionalities requiring snarkOS integration"
 homepage = "https://aleo.org"
 repository = "https://github.com/AleoHQ/snarkVM"
 keywords = [
@@ -18,48 +18,53 @@ license = "GPL-3.0"
 edition = "2018"
 
 [dependencies.snarkvm-algorithms]
-path = "../algorithms"
-version = "0.2.0"
+git = "https://github.com/ljedrz/snarkVM"
+branch = "storage_trait"
 default-features = false
 
 [dependencies.snarkvm-curves]
-path = "../curves"
-version = "0.2.0"
+git = "https://github.com/ljedrz/snarkVM"
+branch = "storage_trait"
+default-features = false
+
+[dependencies.snarkvm-dpc]
+git = "https://github.com/ljedrz/snarkVM"
+branch = "storage_trait"
 default-features = false
 
 [dependencies.snarkvm-fields]
-path = "../fields"
-version = "0.2.0"
+git = "https://github.com/ljedrz/snarkVM"
+branch = "storage_trait"
 default-features = false
 
 [dependencies.snarkvm-gadgets]
-path = "../gadgets"
-version = "0.2.0"
+git = "https://github.com/ljedrz/snarkVM"
+branch = "storage_trait"
 default-features = false
 
 [dependencies.snarkvm-objects]
-path = "../objects"
-version = "0.2.0"
+git = "https://github.com/ljedrz/snarkVM"
+branch = "storage_trait"
 default-features = false
 
 [dependencies.snarkvm-parameters]
-path = "../parameters"
-version = "0.2.0"
+git = "https://github.com/ljedrz/snarkVM"
+branch = "storage_trait"
 default-features = false
 
 [dependencies.snarkvm-profiler]
-path = "../profiler"
-version = "0.2.0"
+git = "https://github.com/ljedrz/snarkVM"
+branch = "storage_trait"
 default-features = false
 
 [dependencies.snarkvm-r1cs]
-path = "../r1cs"
-version = "0.2.0"
+git = "https://github.com/ljedrz/snarkVM"
+branch = "storage_trait"
 default-features = false
 
 [dependencies.snarkvm-utilities]
-path = "../utilities"
-version = "0.2.0"
+git = "https://github.com/ljedrz/snarkVM"
+branch = "storage_trait"
 default-features = false
 
 [dependencies.anyhow]
@@ -86,18 +91,19 @@ version = "0.10.0"
 [dependencies.rand]
 version = "0.8"
 
+[dependencies.snarkos-storage]
+git = "https://github.com/ljedrz/snarkOS"
+branch = "decoupled_storage3"
+default-features = false
+features = ["mem_storage"]
+
+[dependencies.snarkos-testing]
+git = "https://github.com/ljedrz/snarkOS"
+branch = "decoupled_storage3"
+default-features = false
+
 [dependencies.thiserror]
 version = "1.0"
 
-[dev-dependencies.rand_xorshift]
+[dependencies.rand_xorshift]
 version = "0.3"
-
-[features]
-default = [
-  "snarkvm-algorithms/default",
-  "snarkvm-curves/default",
-  "snarkvm-gadgets/default",
-  "snarkvm-parameters/default",
-  "snarkvm-utilities/default"
-]
-print-trace = [ "snarkvm-profiler/print-trace" ]

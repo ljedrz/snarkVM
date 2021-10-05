@@ -52,7 +52,6 @@ impl<P: MerkleParameters> MerklePath<P> {
 
             // Check levels between leaf level and root.
             let mut previous_hash = claimed_leaf_hash;
-            let mut buffer = vec![0u8; hash_input_size_in_bytes];
             for &(ref hash, ref sibling_hash) in &self.path {
                 // Check if the previous hash matches the correct current hash.
                 if &previous_hash != hash && &previous_hash != sibling_hash {

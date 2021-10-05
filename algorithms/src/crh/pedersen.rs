@@ -49,10 +49,10 @@ impl<G: Group, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CRH for Peder
 
         // Pad the input if it is not the current length.
         let mut input = input;
-        let mut padded_input = vec![];
+        let mut padded_input;
         if (input.len() * 8) < WINDOW_SIZE * NUM_WINDOWS {
-            padded_input.extend_from_slice(input);
-            padded_input.resize((WINDOW_SIZE * NUM_WINDOWS) / 8, 0u8);
+            padded_input = vec![0u8; (WINDOW_SIZE * NUM_WINDOWS) / 8];
+            padded_input[..input.len()].copy_from_slice(input);
             input = padded_input.as_slice();
         }
 

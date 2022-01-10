@@ -302,7 +302,11 @@ impl<T: CanonicalDeserialize> CanonicalDeserialize for Vec<T> {
     #[inline]
     fn deserialize<R: Read>(reader: &mut R) -> Result<Self, SerializationError> {
         let len = u64::deserialize(reader)?;
-        let mut values = Vec::with_capacity(len as usize);
+        if len > u32::MAX as u64 {
+            return Err(SerializationError::InvalidData);
+        }
+        let mut values = std::panic::catch_unwind(|| Vec::with_capacity(len as usize))
+            .map_err(|_| SerializationError::InvalidData)?;
         for _ in 0..len {
             values.push(T::deserialize(reader)?);
         }
@@ -312,7 +316,11 @@ impl<T: CanonicalDeserialize> CanonicalDeserialize for Vec<T> {
     #[inline]
     fn deserialize_uncompressed<R: Read>(reader: &mut R) -> Result<Self, SerializationError> {
         let len = u64::deserialize(reader)?;
-        let mut values = Vec::with_capacity(len as usize);
+        if len > u32::MAX as u64 {
+            return Err(SerializationError::InvalidData);
+        }
+        let mut values = std::panic::catch_unwind(|| Vec::with_capacity(len as usize))
+            .map_err(|_| SerializationError::InvalidData)?;
         for _ in 0..len {
             values.push(T::deserialize_uncompressed(reader)?);
         }

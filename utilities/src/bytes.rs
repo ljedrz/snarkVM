@@ -114,7 +114,9 @@ impl<'de, T: FromBytes> FromBytesDeserializer<T> {
     pub fn deserialize<D: Deserializer<'de>>(deserializer: D, name: &str, size: usize) -> Result<T, D::Error> {
         let mut buffer = Vec::with_capacity(size);
         deserializer.deserialize_tuple(size, FromBytesVisitor::new(&mut buffer, name))?;
-        FromBytes::read_le(&buffer[..]).map_err(de::Error::custom)
+        std::panic::catch_unwind(|| FromBytes::read_le(&buffer[..]).map_err(de::Error::custom))
+            .map_err(|_| anyhow::anyhow!("Caught a deserialization panic"))
+            .map_err(de::Error::custom)?
     }
 
     ///

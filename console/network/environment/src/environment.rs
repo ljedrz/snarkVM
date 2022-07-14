@@ -32,19 +32,37 @@ use core::{fmt::Debug, hash::Hash};
 pub trait Environment:
     'static + Copy + Clone + Debug + PartialEq + Eq + Hash + Serialize + DeserializeOwned + Send + Sync
 {
+    #[cfg(not(feature = "fuzzing"))]
     type Affine: AffineCurve<
         Projective = Self::Projective,
         BaseField = Self::Field,
         ScalarField = Self::Scalar,
         Coordinates = (Self::Field, Self::Field),
     >;
+    #[cfg(feature = "fuzzing")]
+    type Affine: AffineCurve<
+            Projective = Self::Projective,
+            BaseField = Self::Field,
+            ScalarField = Self::Scalar,
+            Coordinates = (Self::Field, Self::Field),
+        > + for<'a> arbitrary::Arbitrary<'a>;
     type AffineParameters: MontgomeryParameters<BaseField = Self::Field>
         + TwistedEdwardsParameters<BaseField = Self::Field>;
     type BigInteger: BigInteger;
+    #[cfg(not(feature = "fuzzing"))]
     type Field: PrimeField<BigInteger = Self::BigInteger> + SquareRootField + Copy;
+    #[cfg(feature = "fuzzing")]
+    type Field: PrimeField<BigInteger = Self::BigInteger> + SquareRootField + Copy + for<'a> arbitrary::Arbitrary<'a>;
     type PairingCurve: PairingEngine<Fr = Self::Field>;
+    #[cfg(not(feature = "fuzzing"))]
     type Projective: ProjectiveCurve<Affine = Self::Affine, BaseField = Self::Field, ScalarField = Self::Scalar>;
+    #[cfg(feature = "fuzzing")]
+    type Projective: ProjectiveCurve<Affine = Self::Affine, BaseField = Self::Field, ScalarField = Self::Scalar>
+        + for<'a> arbitrary::Arbitrary<'a>;
+    #[cfg(not(feature = "fuzzing"))]
     type Scalar: PrimeField<BigInteger = Self::BigInteger> + Copy;
+    #[cfg(feature = "fuzzing")]
+    type Scalar: PrimeField<BigInteger = Self::BigInteger> + Copy + for<'a> arbitrary::Arbitrary<'a>;
 
     /// The maximum number of bytes allowed in a string.
     const MAX_STRING_BYTES: u32 = u8::MAX as u32;

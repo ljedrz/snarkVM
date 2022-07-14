@@ -26,6 +26,7 @@ use snarkvm_console_types::Field;
 
 /// A program ID is of the form `{name}.{network}`.
 /// If no `network`-level domain is specified, the default network is used.
+#[cfg_attr(feature = "fuzzing", derive(arbitrary::Arbitrary))]
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
 pub struct ProgramID<N: Network> {
     /// The program name.

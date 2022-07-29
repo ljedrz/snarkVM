@@ -24,7 +24,13 @@ version = "0.7.5"
 path = "../field"
 version = "0.7.5"
 
+[dependencies.arbitrary]
+version = "1"
+features = ["derive"]
+optional = true
+
 [features]
 default = ["enable_console"]
 # Use #[cfg(console)] instead.
 enable_console = ["console"]
+fuzzing = ["arbitrary"]

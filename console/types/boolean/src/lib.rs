@@ -30,6 +30,7 @@ pub use snarkvm_console_network_environment::prelude::*;
 
 use core::marker::PhantomData;
 
+#[cfg_attr(feature = "fuzzing", derive(arbitrary::Arbitrary))]
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
 pub struct Boolean<E: Environment> {
     /// The underlying boolean.

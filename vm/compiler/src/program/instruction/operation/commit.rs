@@ -49,7 +49,7 @@ pub type CommitBHP768<N> = CommitInstruction<N, BHPCommitOperation<N, 768>>;
 pub type CommitBHP1024<N> = CommitInstruction<N, BHPCommitOperation<N, 1024>>;
 
 /// The BHP commitment operation template.
-#[allow(clippy::derive_partial_eq_without_eq)]
+#[cfg_attr(feature = "fuzzing", derive(arbitrary::Arbitrary))]
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct BHPCommitOperation<N: Network, const NUM_BITS: u16>(PhantomData<N>);
 
@@ -115,6 +115,7 @@ impl<N: Network, const NUM_BITS: u16> CommitOperation<N> for BHPCommitOperation<
 }
 
 /// Commits the operand into the declared type.
+#[cfg_attr(feature = "fuzzing", derive(arbitrary::Arbitrary))]
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct CommitInstruction<N: Network, O: CommitOperation<N>> {
     /// The operands as `(input, randomizer)`.

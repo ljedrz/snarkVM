@@ -72,6 +72,7 @@ required-features = ["cli"]
 [features]
 default = ["cli", "parallel", "parameters"]
 full = ["algorithms", "circuit", "console", "curves", "fields", "parameters", "r1cs", "utilities"]
+fuzzing = ["snarkvm-circuit/fuzzing", "snarkvm-compiler/fuzzing", "snarkvm-console/fuzzing", "snarkvm-curves/fuzzing", "snarkvm-fields/fuzzing", "snarkvm-utilities/fuzzing"]
 
 ## snarkVM CLI ##
 cli = ["anyhow", "circuit", "console", "clap", "colored", "rand", "self_update", "serde_json", "thiserror"]

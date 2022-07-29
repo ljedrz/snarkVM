@@ -41,6 +41,7 @@ use rand::{
 };
 use serde::{Deserialize, Serialize};
 
+#[cfg_attr(feature = "fuzzing", derive(arbitrary::Arbitrary))]
 #[derive(Derivative, Serialize, Deserialize)]
 #[derivative(
     Copy(bound = "P: Parameters"),

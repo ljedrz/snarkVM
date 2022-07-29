@@ -89,6 +89,12 @@ version = "1.3"
 [dev-dependencies.regex]
 version = "1.6"
 
+[dependencies.arbitrary]
+version = "1"
+features = ["derive"]
+optional = true
+
 [features]
 default = ["parallel"]
 parallel = ["rayon", "snarkvm-fields/parallel", "snarkvm-utilities/parallel"]
+fuzzing = ["arbitrary", "console/fuzzing", "snarkvm-curves/fuzzing"]

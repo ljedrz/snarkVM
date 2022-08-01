@@ -18,7 +18,10 @@ use crate::ledger::map::{Map, MapReader};
 use console::network::prelude::*;
 
 use core::{borrow::Borrow, hash::Hash};
-use std::collections::hash_map::{HashMap, Iter, Keys, Values};
+use std::{
+    borrow::Cow,
+    collections::hash_map::{self, HashMap},
+};
 
 #[derive(Clone)]
 pub struct MemoryMap<
@@ -68,6 +71,60 @@ impl<
     }
 }
 
+pub struct Iter<'a, K: 'a + Clone, V: 'a + Clone> {
+    inner: hash_map::Iter<'a, K, V>,
+}
+
+impl<'a, K: 'a + Clone, V: 'a + Clone> Iterator for Iter<'a, K, V> {
+    type Item = (Cow<'a, K>, Cow<'a, V>);
+
+    #[inline]
+    fn next(&mut self) -> Option<Self::Item> {
+        self.inner.next().map(|(k, v)| (Cow::Borrowed(k), Cow::Borrowed(v)))
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.inner.size_hint()
+    }
+}
+
+pub struct Keys<'a, K: 'a + Clone, V: 'a + Clone> {
+    inner: Iter<'a, K, V>,
+}
+
+impl<'a, K: 'a + Clone, V: 'a + Clone> Iterator for Keys<'a, K, V> {
+    type Item = Cow<'a, K>;
+
+    #[inline]
+    fn next(&mut self) -> Option<Self::Item> {
+        self.inner.next().map(|(k, _)| k)
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.inner.size_hint()
+    }
+}
+
+pub struct Values<'a, K: 'a + Clone, V: 'a + Clone> {
+    inner: Iter<'a, K, V>,
+}
+
+impl<'a, K: 'a + Clone, V: 'a + Clone> Iterator for Values<'a, K, V> {
+    type Item = Cow<'a, V>;
+
+    #[inline]
+    fn next(&mut self) -> Option<Self::Item> {
+        self.inner.next().map(|(_, v)| v)
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.inner.size_hint()
+    }
+}
+
 impl<
     'a,
     K: 'a + Clone + PartialEq + Eq + Hash + Serialize + for<'de> Deserialize<'de>,
@@ -92,33 +149,33 @@ impl<
     ///
     /// Returns the value for the given key from the map, if it exists.
     ///
-    fn get<Q>(&'a self, key: &Q) -> Result<Option<&V>>
+    fn get<Q>(&'a self, key: &Q) -> Result<Option<Cow<'a, V>>>
     where
         K: Borrow<Q>,
         Q: PartialEq + Eq + Hash + Serialize + ?Sized,
     {
-        Ok(self.map.get(key))
+        Ok(self.map.get(key).map(Cow::Borrowed))
     }
 
     ///
     /// Returns an iterator visiting each key-value pair in the map.
     ///
     fn iter(&'a self) -> Self::Iterator {
-        self.map.iter()
+        Iter { inner: self.map.iter() }
     }
 
     ///
     /// Returns an iterator over each key in the map.
     ///
     fn keys(&'a self) -> Self::Keys {
-        self.map.keys()
+        Keys { inner: self.iter() }
     }
 
     ///
     /// Returns an iterator over each value in the map.
     ///
     fn values(&'a self) -> Self::Values {
-        self.map.values()
+        Values { inner: self.iter() }
     }
 }
 

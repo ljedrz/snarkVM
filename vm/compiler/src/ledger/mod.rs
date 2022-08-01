@@ -364,15 +364,16 @@ impl<
         let transaction = self
             .transactions
             .iter()
-            .flat_map(|(_, transactions)| &**transactions)
-            .filter(|(_, transaction)| transaction.commitments().contains(&commitment))
-            .collect::<Vec<_>>();
+            .filter(|(_, transactions)| transactions.commitments().contains(&commitment))
+            .map(|(_, transactions)| transactions.into_owned())
+            .flat_map(|transactions| transactions.into_inner())
+            .collect::<Vec<(N::TransactionID, Transaction<N>)>>();
 
         if transaction.len() != 1 {
             bail!("Multiple transactions associated with commitment {}", commitment.to_string())
         }
 
-        let (transaction_id, transaction) = transaction[0];
+        let (transaction_id, transaction) = &transaction[0];
 
         // Find the block height that contains the record transaction id.
         let block_height = self

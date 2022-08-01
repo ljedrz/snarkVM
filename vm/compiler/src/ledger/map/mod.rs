@@ -15,16 +15,21 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 pub mod memory_map;
+#[cfg(feature = "rocks")]
+pub mod rocksdb_map;
 
 use console::network::prelude::*;
 
-use core::{borrow::Borrow, hash::Hash};
+use std::{
+    borrow::{Borrow, Cow},
+    hash::Hash,
+};
 
 /// A trait representing map-like storage operations with read-write capabilities.
 pub trait Map<
     'a,
-    K: 'a + PartialEq + Eq + Hash + Serialize + Deserialize<'a>,
-    V: 'a + PartialEq + Eq + Serialize + Deserialize<'a>,
+    K: 'a + PartialEq + Eq + Hash + Serialize + Deserialize<'a> + Clone,
+    V: 'a + PartialEq + Eq + Serialize + Deserialize<'a> + Clone,
 >: Clone + MapReader<'a, K, V> + FromIterator<(K, V)>
 {
     ///
@@ -44,13 +49,13 @@ pub trait Map<
 /// A trait representing map-like storage operations with read-only capabilities.
 pub trait MapReader<
     'a,
-    K: 'a + PartialEq + Eq + Hash + Serialize + Deserialize<'a>,
-    V: 'a + PartialEq + Eq + Serialize + Deserialize<'a>,
+    K: 'a + PartialEq + Eq + Hash + Serialize + Deserialize<'a> + Clone,
+    V: 'a + PartialEq + Eq + Serialize + Deserialize<'a> + Clone,
 >
 {
-    type Iterator: Iterator<Item = (&'a K, &'a V)>;
-    type Keys: Iterator<Item = &'a K>;
-    type Values: Iterator<Item = &'a V>;
+    type Iterator: Iterator<Item = (Cow<'a, K>, Cow<'a, V>)>;
+    type Keys: Iterator<Item = Cow<'a, K>>;
+    type Values: Iterator<Item = Cow<'a, V>>;
 
     ///
     /// Returns `true` if the given key exists in the map.
@@ -63,7 +68,7 @@ pub trait MapReader<
     ///
     /// Returns the value for the given key from the map, if it exists.
     ///
-    fn get<Q>(&'a self, key: &Q) -> Result<Option<&V>>
+    fn get<Q>(&'a self, key: &Q) -> Result<Option<Cow<'a, V>>>
     where
         K: Borrow<Q>,
         Q: PartialEq + Eq + Hash + Serialize + ?Sized;

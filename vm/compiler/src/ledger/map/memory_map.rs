@@ -48,10 +48,7 @@ impl<
     ///
     /// Inserts the given key-value pair into the map.
     ///
-    fn insert<Q>(&mut self, key: K, value: V) -> Result<()>
-    where
-        Q: PartialEq + Eq + Hash + Serialize,
-    {
+    fn insert(&mut self, key: K, value: V) -> Result<()> {
         self.map.insert(key, value);
 
         Ok(())

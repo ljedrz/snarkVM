@@ -332,14 +332,14 @@ impl<
             ledger.current_height = block.height();
             ledger.current_round = block.round();
             ledger.block_tree.append(&[block.hash().to_bits_le()])?;
-            ledger.previous_hashes.insert::<u32>(block.height(), block.previous_hash())?;
-            ledger.headers.insert::<u32>(block.height(), *block.header())?;
-            ledger.transactions.insert::<u32>(block.height(), block.transactions().clone())?;
-            ledger.signatures.insert::<u32>(block.height(), *block.signature())?;
+            ledger.previous_hashes.insert(block.height(), block.previous_hash())?;
+            ledger.headers.insert(block.height(), *block.header())?;
+            ledger.transactions.insert(block.height(), block.transactions().clone())?;
+            ledger.signatures.insert(block.height(), *block.signature())?;
 
             // Update the map of deployed programs.
             for (program_id, deployment) in block.deployments().map(|deploy| (*deploy.program().id(), deploy.clone())) {
-                ledger.programs.insert::<ProgramID<N>>(program_id, deployment)?;
+                ledger.programs.insert(program_id, deployment)?;
             }
 
             // Clear the memory pool of these transactions.

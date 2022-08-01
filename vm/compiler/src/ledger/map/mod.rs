@@ -30,9 +30,7 @@ pub trait Map<
     ///
     /// Inserts the given key-value pair into the map.
     ///
-    fn insert<Q>(&mut self, key: K, value: V) -> Result<()>
-    where
-        Q: PartialEq + Eq + Hash + Serialize;
+    fn insert(&mut self, key: K, value: V) -> Result<()>;
 
     ///
     /// Removes the key-value pair for the given key from the map.

@@ -51,6 +51,10 @@ default-features = false
 [dependencies.anyhow]
 version = "1.0.57"
 
+[dependencies.bincode]
+version = "1.0"
+optional = true
+
 [dependencies.colored]
 version = "2"
 
@@ -74,6 +78,12 @@ version = "0.8"
 version = "1"
 optional = true
 
+[dependencies.rocksdb]
+version = "0.18"
+optional = true
+default-features = false
+features = ["lz4"]
+
 [dependencies.serde_json]
 version = "1.0"
 
@@ -91,4 +101,5 @@ version = "1.6"
 
 [features]
 default = ["parallel"]
+rocks = ["bincode", "rocksdb"]
 parallel = ["rayon", "snarkvm-fields/parallel", "snarkvm-utilities/parallel"]

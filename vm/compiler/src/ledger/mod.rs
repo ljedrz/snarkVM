@@ -196,10 +196,12 @@ impl<
                 let genesis = Block::<N>::from_bytes_le(GenesisBytes::load_bytes())?;
 
                 // Add the genesis block.
-                ledger.previous_hashes.insert(genesis.height(), genesis.previous_hash())?;
-                ledger.headers.insert(genesis.height(), *genesis.header())?;
-                ledger.transactions.insert(genesis.height(), genesis.transactions().clone())?;
-                ledger.signatures.insert(genesis.height(), *genesis.signature())?;
+                let batch_id = ledger.headers.prepare_batch();
+                ledger.previous_hashes.insert(genesis.height(), genesis.previous_hash(), batch_id)?;
+                ledger.headers.insert(genesis.height(), *genesis.header(), batch_id)?;
+                ledger.transactions.insert(genesis.height(), genesis.transactions().clone(), batch_id)?;
+                ledger.signatures.insert(genesis.height(), *genesis.signature(), batch_id)?;
+                ledger.headers.execute_batch(batch_id)?;
 
                 // Return the genesis height.
                 genesis.height()
@@ -430,10 +432,13 @@ impl<
             ledger.current_height = block.height();
             ledger.current_round = block.round();
             ledger.block_tree.append(&[block.hash().to_bits_le()])?;
-            ledger.previous_hashes.insert(block.height(), block.previous_hash())?;
-            ledger.headers.insert(block.height(), *block.header())?;
-            ledger.transactions.insert(block.height(), block.transactions().clone())?;
-            ledger.signatures.insert(block.height(), *block.signature())?;
+
+            let batch_id = ledger.headers.prepare_batch();
+            ledger.previous_hashes.insert(block.height(), block.previous_hash(), batch_id)?;
+            ledger.headers.insert(block.height(), *block.header(), batch_id)?;
+            ledger.transactions.insert(block.height(), block.transactions().clone(), batch_id)?;
+            ledger.signatures.insert(block.height(), *block.signature(), batch_id)?;
+            ledger.headers.execute_batch(batch_id)?;
 
             // Update the VM.
             for transaction in block.transactions().values() {

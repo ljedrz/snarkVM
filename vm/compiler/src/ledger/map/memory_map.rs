@@ -51,24 +51,51 @@ impl<
 > Map<'a, K, V> for MemoryMap<K, V>
 {
     ///
-    /// Inserts the given key-value pair into the map.
+    /// Inserts the given key-value pair into the map. Can be paired with a numeric
+    /// batch id, which defers the operation until `execute_batch` is called using
+    /// the same id.
     ///
-    fn insert(&mut self, key: K, value: V) -> Result<()> {
+    fn insert(&mut self, key: K, value: V, _batch: Option<usize>) -> Result<()> {
         self.map.insert(key, value);
 
         Ok(())
     }
 
     ///
-    /// Removes the key-value pair for the given key from the map.
+    /// Removes the key-value pair for the given key from the map. Can be paired with a
+    /// numeric batch id, which defers the operation until `execute_batch` is called using
+    /// the same id.
     ///
-    fn remove<Q>(&mut self, key: &Q) -> Result<()>
+    fn remove<Q>(&mut self, key: &Q, _batch: Option<usize>) -> Result<()>
     where
         K: Borrow<Q>,
         Q: PartialEq + Eq + Hash + Serialize + ?Sized,
     {
         self.map.remove(key);
 
+        Ok(())
+    }
+
+    ///
+    /// Prepares an atomic batch of writes and returns its numeric id which can later be used to include
+    /// operations within it. `execute_batch` has to be called in order for any of the writes to actually
+    /// take place.
+    ///
+    fn prepare_batch(&self) -> Option<usize> {
+        None
+    }
+
+    ///
+    /// Atomically executes a write batch with the given id.
+    ///
+    fn execute_batch(&self, _batch: Option<usize>) -> Result<()> {
+        Ok(())
+    }
+
+    ///
+    /// Discards a write batch with the given id.
+    ///
+    fn discard_batch(&self, _batch: Option<usize>) -> Result<()> {
         Ok(())
     }
 }

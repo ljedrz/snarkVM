@@ -18,7 +18,7 @@ use crate::{
     cow_to_cloned,
     cow_to_copied,
     ledger::{
-        map::{memory_map::MemoryMap, Map, MapRead},
+        map::{memory_map::MemoryMap, BatchOperation, Map, MapRead},
         store::{TransitionMemory, TransitionStorage, TransitionStore},
         transaction::{AdditionalFee, Transaction},
     },
@@ -34,7 +34,8 @@ use console::{
 use anyhow::Result;
 use core::marker::PhantomData;
 use indexmap::IndexMap;
-use std::borrow::Cow;
+use parking_lot::Mutex;
+use std::{borrow::Cow, sync::Arc};
 
 /// A trait for deployment storage.
 pub trait DeploymentStorage<N: Network>: Clone + Sync {
@@ -56,7 +57,10 @@ pub trait DeploymentStorage<N: Network>: Clone + Sync {
     type TransitionStorage: TransitionStorage<N>;
 
     /// Initializes the deployment storage.
-    fn open(transition_store: TransitionStore<N, Self::TransitionStorage>) -> Result<Self>;
+    fn open(
+        transition_store: TransitionStore<N, Self::TransitionStorage>,
+        shared_batch_ops: Arc<Mutex<Vec<BatchOperation>>>,
+    ) -> Result<Self>;
 
     /// Returns the ID map.
     fn id_map(&self) -> &Self::IDMap;
@@ -372,15 +376,15 @@ impl<N: Network> DeploymentStorage<N> for DeploymentMemory<N> {
     type TransitionStorage = TransitionMemory<N>;
 
     /// Initializes the deployment storage.
-    fn open(transition_store: TransitionStore<N, Self::TransitionStorage>) -> Result<Self> {
+    fn open(transition_store: TransitionStore<N, Self::TransitionStorage>, shared_batch_ops: Arc<Mutex<Vec<BatchOperation>>>) -> Result<Self> {
         Ok(Self {
-            id_map: MemoryMap::default(),
-            edition_map: MemoryMap::default(),
-            reverse_id_map: MemoryMap::default(),
-            program_map: MemoryMap::default(),
-            verifying_key_map: MemoryMap::default(),
-            certificate_map: MemoryMap::default(),
-            additional_fee_map: MemoryMap::default(),
+            id_map: MemoryMap::new(shared_batch_ops.clone()),
+            edition_map: MemoryMap::new(shared_batch_ops.clone()),
+            reverse_id_map: MemoryMap::new(shared_batch_ops.clone()),
+            program_map: MemoryMap::new(shared_batch_ops.clone()),
+            verifying_key_map: MemoryMap::new(shared_batch_ops.clone()),
+            certificate_map: MemoryMap::new(shared_batch_ops.clone()),
+            additional_fee_map: MemoryMap::new(shared_batch_ops),
             transition_store,
         })
     }
@@ -437,9 +441,12 @@ pub struct DeploymentStore<N: Network, D: DeploymentStorage<N>> {
 
 impl<N: Network, D: DeploymentStorage<N>> DeploymentStore<N, D> {
     /// Initializes the deployment store.
-    pub fn open(transition_store: TransitionStore<N, D::TransitionStorage>) -> Result<Self> {
+    pub fn open(
+        transition_store: TransitionStore<N, D::TransitionStorage>,
+        shared_batch_ops: Arc<Mutex<Vec<BatchOperation>>>,
+    ) -> Result<Self> {
         // Initialize the deployment storage.
-        let storage = D::open(transition_store)?;
+        let storage = D::open(transition_store, shared_batch_ops)?;
         // Return the deployment store.
         Ok(Self { storage, _phantom: PhantomData })
     }

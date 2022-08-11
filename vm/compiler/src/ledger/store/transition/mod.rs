@@ -24,7 +24,7 @@ use crate::{
     cow_to_cloned,
     cow_to_copied,
     ledger::{
-        map::{memory_map::MemoryMap, Map, MapRead},
+        map::{memory_map::MemoryMap, BatchOperation, Map, MapRead},
         Input,
         Origin,
         Output,
@@ -39,7 +39,8 @@ use console::{
 };
 
 use anyhow::Result;
-use std::borrow::Cow;
+use parking_lot::Mutex;
+use std::{borrow::Cow, sync::Arc};
 
 /// A trait for transition storage.
 pub trait TransitionStorage<N: Network>: Clone + Sync {
@@ -63,7 +64,7 @@ pub trait TransitionStorage<N: Network>: Clone + Sync {
     type FeeMap: for<'a> Map<'a, N::TransitionID, i64>;
 
     /// Initializes the transition storage.
-    fn open() -> Result<Self>;
+    fn open(shared_batch_ops: Arc<Mutex<Vec<BatchOperation>>>) -> Result<Self>;
 
     /// Returns the transition program IDs and function names.
     fn locator_map(&self) -> &Self::LocatorMap;
@@ -225,17 +226,17 @@ impl<N: Network> TransitionStorage<N> for TransitionMemory<N> {
     type FeeMap = MemoryMap<N::TransitionID, i64>;
 
     /// Initializes the transition storage.
-    fn open() -> Result<Self> {
+    fn open(shared_batch_ops: Arc<Mutex<Vec<BatchOperation>>>) -> Result<Self> {
         Ok(Self {
-            locator_map: MemoryMap::default(),
-            input_store: InputStore::open()?,
-            output_store: OutputStore::open()?,
-            proof_map: MemoryMap::default(),
-            tpk_map: MemoryMap::default(),
-            reverse_tpk_map: MemoryMap::default(),
-            tcm_map: MemoryMap::default(),
-            reverse_tcm_map: MemoryMap::default(),
-            fee_map: MemoryMap::default(),
+            locator_map: MemoryMap::new(shared_batch_ops.clone()),
+            input_store: InputStore::open(shared_batch_ops.clone())?,
+            output_store: OutputStore::open(shared_batch_ops.clone())?,
+            proof_map: MemoryMap::new(shared_batch_ops.clone()),
+            tpk_map: MemoryMap::new(shared_batch_ops.clone()),
+            reverse_tpk_map: MemoryMap::new(shared_batch_ops.clone()),
+            tcm_map: MemoryMap::new(shared_batch_ops.clone()),
+            reverse_tcm_map: MemoryMap::new(shared_batch_ops.clone()),
+            fee_map: MemoryMap::new(shared_batch_ops),
         })
     }
 
@@ -312,9 +313,9 @@ pub struct TransitionStore<N: Network, T: TransitionStorage<N>> {
 
 impl<N: Network, T: TransitionStorage<N>> TransitionStore<N, T> {
     /// Initializes the transition store.
-    pub fn open() -> Result<Self> {
+    pub fn open(shared_batch_ops: Arc<Mutex<Vec<BatchOperation>>>) -> Result<Self> {
         // Initialize the transition storage.
-        let storage = T::open()?;
+        let storage = T::open(shared_batch_ops)?;
         // Return the transition store.
         Ok(Self {
             locator: storage.locator_map().clone(),

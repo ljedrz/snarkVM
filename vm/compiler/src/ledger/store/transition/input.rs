@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::ledger::{
-    map::{memory_map::MemoryMap, Map, MapRead},
+    map::{memory_map::MemoryMap, BatchOperation, Map, MapRead},
     transition::{Input, Origin},
 };
 use console::{
@@ -25,7 +25,8 @@ use console::{
 };
 
 use anyhow::Result;
-use std::borrow::Cow;
+use parking_lot::Mutex;
+use std::{borrow::Cow, sync::Arc};
 
 /// A trait for transition input storage.
 pub trait InputStorage<N: Network>: Clone + Sync {
@@ -47,7 +48,7 @@ pub trait InputStorage<N: Network>: Clone + Sync {
     type ExternalRecordMap: for<'a> Map<'a, Field<N>, ()>;
 
     /// Initializes the transition input storage.
-    fn open() -> Result<Self>;
+    fn open(shared_batch_ops: Arc<Mutex<Vec<BatchOperation>>>) -> Result<Self>;
 
     /// Returns the ID map.
     fn id_map(&self) -> &Self::IDMap;
@@ -226,16 +227,16 @@ impl<N: Network> InputStorage<N> for InputMemory<N> {
     type ExternalRecordMap = MemoryMap<Field<N>, ()>;
 
     /// Initializes the transition input storage.
-    fn open() -> Result<Self> {
+    fn open(shared_batch_ops: Arc<Mutex<Vec<BatchOperation>>>) -> Result<Self> {
         Ok(Self {
-            id_map: MemoryMap::default(),
-            reverse_id_map: MemoryMap::default(),
-            constant: MemoryMap::default(),
-            public: MemoryMap::default(),
-            private: MemoryMap::default(),
-            record: MemoryMap::default(),
-            record_tag: MemoryMap::default(),
-            external_record: MemoryMap::default(),
+            id_map: MemoryMap::new(shared_batch_ops.clone()),
+            reverse_id_map: MemoryMap::new(shared_batch_ops.clone()),
+            constant: MemoryMap::new(shared_batch_ops.clone()),
+            public: MemoryMap::new(shared_batch_ops.clone()),
+            private: MemoryMap::new(shared_batch_ops.clone()),
+            record: MemoryMap::new(shared_batch_ops.clone()),
+            record_tag: MemoryMap::new(shared_batch_ops.clone()),
+            external_record: MemoryMap::new(shared_batch_ops),
         })
     }
 
@@ -301,9 +302,9 @@ pub struct InputStore<N: Network, I: InputStorage<N>> {
 
 impl<N: Network, I: InputStorage<N>> InputStore<N, I> {
     /// Initializes the transition input store.
-    pub fn open() -> Result<Self> {
+    pub fn open(shared_batch_ops: Arc<Mutex<Vec<BatchOperation>>>) -> Result<Self> {
         // Initialize a new transition input storage.
-        let storage = I::open()?;
+        let storage = I::open(shared_batch_ops)?;
         // Return the transition input store.
         Ok(Self {
             constant: storage.constant_map().clone(),

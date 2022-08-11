@@ -18,7 +18,7 @@ use crate::{
     cow_to_cloned,
     cow_to_copied,
     ledger::{
-        map::{memory_map::MemoryMap, Map, MapRead},
+        map::{memory_map::MemoryMap, BatchOperation, Map, MapRead},
         store::{TransitionMemory, TransitionStorage, TransitionStore},
         AdditionalFee,
         Transaction,
@@ -30,6 +30,8 @@ use console::network::prelude::*;
 
 use anyhow::Result;
 use core::marker::PhantomData;
+use parking_lot::Mutex;
+use std::sync::Arc;
 
 /// A trait for execution storage.
 pub trait ExecutionStorage<N: Network>: Clone + Sync {
@@ -43,7 +45,10 @@ pub trait ExecutionStorage<N: Network>: Clone + Sync {
     type TransitionStorage: TransitionStorage<N>;
 
     /// Initializes the execution storage.
-    fn open(transition_store: TransitionStore<N, Self::TransitionStorage>) -> Result<Self>;
+    fn open(
+        transition_store: TransitionStore<N, Self::TransitionStorage>,
+        shared_batch_ops: Arc<Mutex<Vec<BatchOperation>>>,
+    ) -> Result<Self>;
 
     /// Returns the ID map.
     fn id_map(&self) -> &Self::IDMap;
@@ -240,11 +245,11 @@ impl<N: Network> ExecutionStorage<N> for ExecutionMemory<N> {
     type TransitionStorage = TransitionMemory<N>;
 
     /// Initializes the execution storage.
-    fn open(transition_store: TransitionStore<N, Self::TransitionStorage>) -> Result<Self> {
+    fn open(transition_store: TransitionStore<N, Self::TransitionStorage>, shared_batch_ops: Arc<Mutex<Vec<BatchOperation>>>) -> Result<Self> {
         Ok(Self {
-            id_map: MemoryMap::default(),
-            reverse_id_map: MemoryMap::default(),
-            edition_map: MemoryMap::default(),
+            id_map: MemoryMap::new(shared_batch_ops.clone()),
+            reverse_id_map: MemoryMap::new(shared_batch_ops.clone()),
+            edition_map: MemoryMap::new(shared_batch_ops),
             transition_store,
         })
     }
@@ -281,9 +286,12 @@ pub struct ExecutionStore<N: Network, E: ExecutionStorage<N>> {
 
 impl<N: Network, E: ExecutionStorage<N>> ExecutionStore<N, E> {
     /// Initializes the execution store.
-    pub fn open(transition_store: TransitionStore<N, E::TransitionStorage>) -> Result<Self> {
+    pub fn open(
+        transition_store: TransitionStore<N, E::TransitionStorage>,
+        shared_batch_ops: Arc<Mutex<Vec<BatchOperation>>>,
+    ) -> Result<Self> {
         // Initialize the execution storage.
-        let storage = E::open(transition_store)?;
+        let storage = E::open(transition_store, shared_batch_ops)?;
         // Return the execution store.
         Ok(Self { storage, _phantom: PhantomData })
     }

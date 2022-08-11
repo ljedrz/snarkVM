@@ -14,14 +14,21 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::ledger::map::{Map, MapRead};
+use crate::ledger::map::{BatchOperation, Map, MapRead};
 use console::network::prelude::*;
 use indexmap::IndexMap;
 
 use core::{borrow::Borrow, hash::Hash};
 use indexmap::map;
-use parking_lot::RwLock;
-use std::{borrow::Cow, sync::Arc};
+use parking_lot::{Mutex, RwLock};
+use std::{
+    borrow::Cow,
+    mem,
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc,
+    },
+};
 
 #[derive(Clone)]
 pub struct MemoryMap<
@@ -29,27 +36,8 @@ pub struct MemoryMap<
     V: Clone + PartialEq + Eq + Serialize + for<'de> Deserialize<'de> + Sync,
 > {
     pub(super) map: Arc<RwLock<IndexMap<K, V>>>,
-}
-
-impl<
-    K: Copy + Clone + PartialEq + Eq + Hash + Serialize + for<'de> Deserialize<'de> + Sync,
-    V: Clone + PartialEq + Eq + Serialize + for<'de> Deserialize<'de> + Sync,
-> Default for MemoryMap<K, V>
-{
-    fn default() -> Self {
-        Self { map: Default::default() }
-    }
-}
-
-impl<
-    K: Copy + Clone + PartialEq + Eq + Hash + Serialize + for<'de> Deserialize<'de> + Sync,
-    V: Clone + PartialEq + Eq + Serialize + for<'de> Deserialize<'de> + Sync,
-> FromIterator<(K, V)> for MemoryMap<K, V>
-{
-    /// Initializes a new `MemoryMap` from the given iterator.
-    fn from_iter<I: IntoIterator<Item = (K, V)>>(iter: I) -> Self {
-        Self { map: Arc::new(RwLock::new(IndexMap::from_iter(iter))) }
-    }
+    batch_in_progress: Arc<AtomicBool>,
+    atomic_batch: Arc<Mutex<Vec<BatchOperation>>>,
 }
 
 impl<
@@ -59,10 +47,23 @@ impl<
 > Map<'a, K, V> for MemoryMap<K, V>
 {
     ///
+    /// Creates a new instance of a `Map`.
+    ///
+    fn new(shared_batch_ops: Arc<Mutex<Vec<BatchOperation>>>) -> Self {
+        Self { map: Default::default(), batch_in_progress: Default::default(), atomic_batch: shared_batch_ops }
+    }
+
+    ///
     /// Inserts the given key-value pair into the map.
     ///
     fn insert(&self, key: K, value: V) -> Result<()> {
-        self.map.write().insert(key, value);
+        if self.batch_in_progress.load(Ordering::SeqCst) {
+            self.atomic_batch
+                .lock()
+                .push(BatchOperation::Put(bincode::serialize(&key).unwrap(), bincode::serialize(&value).unwrap()));
+        } else {
+            self.map.write().insert(key, value);
+        }
 
         Ok(())
     }
@@ -75,9 +76,45 @@ impl<
         K: Borrow<Q>,
         Q: PartialEq + Eq + Hash + Serialize + ?Sized,
     {
-        self.map.write().remove(key);
+        if self.batch_in_progress.load(Ordering::SeqCst) {
+            self.atomic_batch.lock().push(BatchOperation::Delete(bincode::serialize(&key).unwrap()));
+        } else {
+            self.map.write().remove(key);
+        }
 
         Ok(())
+    }
+
+    ///
+    /// Begins an atomic operation. Any further calls to `insert` and `remove` will be queued
+    /// without an actual write taking place until `finish_atomic` is called.
+    ///
+    fn start_atomic(&self) {
+        assert!(!self.batch_in_progress.swap(true, Ordering::SeqCst));
+        assert!(self.atomic_batch.lock().is_empty());
+    }
+
+    ///
+    /// Finishes an atomic operation, performing all the queued writes.
+    ///
+    fn finish_atomic(&self) {
+        let operations = mem::take(&mut *self.atomic_batch.lock());
+
+        {
+            let mut locked_map = self.map.write();
+
+            // We performed the serialization when queuing operations, so deserialization can be trusted.
+            for op in operations {
+                match op {
+                    BatchOperation::Put(k, v) => {
+                        locked_map.insert(bincode::deserialize(&k).unwrap(), bincode::deserialize(&v).unwrap())
+                    }
+                    BatchOperation::Delete(k) => locked_map.remove::<K>(&bincode::deserialize(&k).unwrap()),
+                };
+            }
+        }
+
+        assert!(self.batch_in_progress.swap(false, Ordering::SeqCst));
     }
 }
 

@@ -23,7 +23,7 @@ pub use execution::*;
 use crate::{
     cow_to_copied,
     ledger::{
-        map::{memory_map::MemoryMap, Map, MapRead},
+        map::{memory_map::MemoryMap, BatchOperation, Map, MapRead},
         store::{TransitionMemory, TransitionStorage, TransitionStore},
         AdditionalFee,
         Transaction,
@@ -38,8 +38,9 @@ use console::{
 };
 
 use anyhow::Result;
+use parking_lot::Mutex;
 use serde::{Deserialize, Serialize};
-use std::borrow::Cow;
+use std::{borrow::Cow, sync::Arc};
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum TransactionType {
@@ -61,7 +62,10 @@ pub trait TransactionStorage<N: Network>: Clone + Sync {
     type TransitionStorage: TransitionStorage<N>;
 
     /// Initializes the transaction storage.
-    fn open(transition_store: TransitionStore<N, Self::TransitionStorage>) -> Result<Self>;
+    fn open(
+        transition_store: TransitionStore<N, Self::TransitionStorage>,
+        shared_batch_ops: Arc<Mutex<Vec<BatchOperation>>>,
+    ) -> Result<Self>;
 
     /// Returns the ID map.
     fn id_map(&self) -> &Self::IDMap;
@@ -153,13 +157,13 @@ impl<N: Network> TransactionStorage<N> for TransactionMemory<N> {
     type TransitionStorage = TransitionMemory<N>;
 
     /// Initializes the transaction storage.
-    fn open(transition_store: TransitionStore<N, Self::TransitionStorage>) -> Result<Self> {
+    fn open(transition_store: TransitionStore<N, Self::TransitionStorage>, shared_batch_ops: Arc<Mutex<Vec<BatchOperation>>>) -> Result<Self> {
         // Initialize the deployment store.
-        let deployment_store = DeploymentStore::<N, DeploymentMemory<N>>::open(transition_store.clone())?;
+        let deployment_store = DeploymentStore::<N, DeploymentMemory<N>>::open(transition_store.clone(), shared_batch_ops.clone())?;
         // Initialize the execution store.
-        let execution_store = ExecutionStore::<N, ExecutionMemory<N>>::open(transition_store)?;
+        let execution_store = ExecutionStore::<N, ExecutionMemory<N>>::open(transition_store, shared_batch_ops.clone())?;
         // Return the transaction storage.
-        Ok(Self { id_map: MemoryMap::default(), deployment_store, execution_store })
+        Ok(Self { id_map: MemoryMap::new(shared_batch_ops), deployment_store, execution_store })
     }
 
     /// Returns the ID map.
@@ -189,9 +193,12 @@ pub struct TransactionStore<N: Network, T: TransactionStorage<N>> {
 
 impl<N: Network, T: TransactionStorage<N>> TransactionStore<N, T> {
     /// Initializes the transaction store.
-    pub fn open(transition_store: TransitionStore<N, T::TransitionStorage>) -> Result<Self> {
+    pub fn open(
+        transition_store: TransitionStore<N, T::TransitionStorage>,
+        shared_batch_ops: Arc<Mutex<Vec<BatchOperation>>>,
+    ) -> Result<Self> {
         // Initialize the transaction storage.
-        let storage = T::open(transition_store)?;
+        let storage = T::open(transition_store, shared_batch_ops)?;
         // Return the transaction store.
         Ok(Self { transaction_ids: storage.id_map().clone(), storage })
     }

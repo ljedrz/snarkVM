@@ -18,7 +18,7 @@ use crate::{
     cow_to_cloned,
     cow_to_copied,
     ledger::{
-        map::{memory_map::MemoryMap, Map, MapRead},
+        map::{memory_map::MemoryMap, BatchOperation, Map, MapRead},
         store::{
             TransactionMemory,
             TransactionStorage,
@@ -37,7 +37,8 @@ use console::network::prelude::*;
 
 use anyhow::Result;
 use core::marker::PhantomData;
-use std::borrow::Cow;
+use parking_lot::Mutex;
+use std::{borrow::Cow, sync::Arc};
 
 macro_rules! bail_with_block {
     ($message:expr, $self:ident, $hash:expr) => {{
@@ -66,7 +67,7 @@ pub trait BlockStorage<N: Network>: Clone + Sync {
     type SignatureMap: for<'a> Map<'a, N::BlockHash, Signature<N>>;
 
     /// Initializes the block storage.
-    fn open() -> Result<Self>;
+    fn open(shared_batch_ops: Arc<Mutex<Vec<BatchOperation>>>) -> Result<Self>;
 
     /// Returns the ID map.
     fn id_map(&self) -> &Self::IDMap;
@@ -287,20 +288,20 @@ impl<N: Network> BlockStorage<N> for BlockMemory<N> {
     type SignatureMap = MemoryMap<N::BlockHash, Signature<N>>;
 
     /// Initializes the block storage.
-    fn open() -> Result<Self> {
+    fn open(shared_batch_ops: Arc<Mutex<Vec<BatchOperation>>>) -> Result<Self> {
         // Initialize the transition store.
-        let transition_store = TransitionStore::<N, TransitionMemory<N>>::open()?;
+        let transition_store = TransitionStore::<N, TransitionMemory<N>>::open(shared_batch_ops.clone())?;
         // Initialize the transaction store.
-        let transaction_store = TransactionStore::<N, TransactionMemory<N>>::open(transition_store)?;
+        let transaction_store = TransactionStore::<N, TransactionMemory<N>>::open(transition_store, shared_batch_ops.clone())?;
         // Return the block storage.
         Ok(Self {
-            id_map: MemoryMap::default(),
-            reverse_id_map: MemoryMap::default(),
-            header_map: MemoryMap::default(),
-            transactions_map: MemoryMap::default(),
-            reverse_transactions_map: MemoryMap::default(),
+            id_map: MemoryMap::new(shared_batch_ops.clone()),
+            reverse_id_map: MemoryMap::new(shared_batch_ops.clone()),
+            header_map: MemoryMap::new(shared_batch_ops.clone()),
+            transactions_map: MemoryMap::new(shared_batch_ops.clone()),
+            reverse_transactions_map: MemoryMap::new(shared_batch_ops.clone()),
             transaction_store,
-            signature_map: MemoryMap::default(),
+            signature_map: MemoryMap::new(shared_batch_ops),
         })
     }
 
@@ -351,9 +352,9 @@ pub struct BlockStore<N: Network, B: BlockStorage<N>> {
 
 impl<N: Network, B: BlockStorage<N>> BlockStore<N, B> {
     /// Initializes the block store.
-    pub fn open() -> Result<Self> {
+    pub fn open(shared_batch_ops: Arc<Mutex<Vec<BatchOperation>>>) -> Result<Self> {
         // Initialize the block storage.
-        let storage = B::open()?;
+        let storage = B::open(shared_batch_ops)?;
         // Return the block store.
         Ok(Self { storage, _phantom: PhantomData })
     }

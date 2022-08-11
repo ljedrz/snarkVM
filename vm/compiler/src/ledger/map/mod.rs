@@ -19,7 +19,13 @@ pub mod memory_map;
 use console::network::prelude::*;
 
 use core::{borrow::Borrow, hash::Hash};
-use std::borrow::Cow;
+use parking_lot::Mutex;
+use std::{borrow::Cow, sync::Arc};
+
+pub enum BatchOperation {
+    Put(Vec<u8>, Vec<u8>),
+    Delete(Vec<u8>),
+}
 
 /// A trait representing map-like storage operations with read-write capabilities.
 pub trait Map<
@@ -28,6 +34,11 @@ pub trait Map<
     V: 'a + Clone + PartialEq + Eq + Serialize + Deserialize<'a> + Send + Sync,
 >: Clone + MapRead<'a, K, V> + Sync
 {
+    ///
+    /// Creates a new instance of a `Map`.
+    ///
+    fn new(shared_batch_ops: Arc<Mutex<Vec<BatchOperation>>>) -> Self;
+
     ///
     /// Inserts the given key-value pair into the map.
     ///
@@ -40,6 +51,17 @@ pub trait Map<
     where
         K: Borrow<Q>,
         Q: PartialEq + Eq + Hash + Serialize + ?Sized;
+
+    ///
+    /// Begins an atomic operation. Any further calls to `insert` and `remove` will be queued
+    /// without an actual write taking place until `finish_atomic` is called.
+    ///
+    fn start_atomic(&self);
+
+    ///
+    /// Finishes an atomic operation, performing all the queued writes.
+    ///
+    fn finish_atomic(&self);
 }
 
 /// A trait representing map-like storage operations with read-only capabilities.

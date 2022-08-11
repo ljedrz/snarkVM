@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::ledger::{
-    map::{memory_map::MemoryMap, Map, MapRead},
+    map::{memory_map::MemoryMap, BatchOperation, Map, MapRead},
     transition::Output,
 };
 use console::{
@@ -25,7 +25,8 @@ use console::{
 };
 
 use anyhow::Result;
-use std::borrow::Cow;
+use parking_lot::Mutex;
+use std::{borrow::Cow, sync::Arc};
 
 /// A trait for transition output storage.
 pub trait OutputStorage<N: Network>: Clone + Sync {
@@ -47,7 +48,7 @@ pub trait OutputStorage<N: Network>: Clone + Sync {
     type ExternalRecordMap: for<'a> Map<'a, Field<N>, ()>;
 
     /// Initializes the transition output storage.
-    fn open() -> Result<Self>;
+    fn open(shared_batch_ops: Arc<Mutex<Vec<BatchOperation>>>) -> Result<Self>;
 
     /// Returns the ID map.
     fn id_map(&self) -> &Self::IDMap;
@@ -231,16 +232,16 @@ impl<N: Network> OutputStorage<N> for OutputMemory<N> {
     type ExternalRecordMap = MemoryMap<Field<N>, ()>;
 
     /// Initializes the transition output storage.
-    fn open() -> Result<Self> {
+    fn open(shared_batch_ops: Arc<Mutex<Vec<BatchOperation>>>) -> Result<Self> {
         Ok(Self {
-            id_map: Default::default(),
-            reverse_id_map: Default::default(),
-            constant: Default::default(),
-            public: Default::default(),
-            private: Default::default(),
-            record: Default::default(),
-            record_nonce: Default::default(),
-            external_record: Default::default(),
+            id_map: MemoryMap::new(shared_batch_ops.clone()),
+            reverse_id_map: MemoryMap::new(shared_batch_ops.clone()),
+            constant: MemoryMap::new(shared_batch_ops.clone()),
+            public: MemoryMap::new(shared_batch_ops.clone()),
+            private: MemoryMap::new(shared_batch_ops.clone()),
+            record: MemoryMap::new(shared_batch_ops.clone()),
+            record_nonce: MemoryMap::new(shared_batch_ops.clone()),
+            external_record: MemoryMap::new(shared_batch_ops),
         })
     }
 
@@ -306,9 +307,9 @@ pub struct OutputStore<N: Network, O: OutputStorage<N>> {
 
 impl<N: Network, O: OutputStorage<N>> OutputStore<N, O> {
     /// Initializes the transition output store.
-    pub fn open() -> Result<Self> {
+    pub fn open(shared_batch_ops: Arc<Mutex<Vec<BatchOperation>>>) -> Result<Self> {
         // Initialize a new transition output storage.
-        let storage = O::open()?;
+        let storage = O::open(shared_batch_ops)?;
         // Return the transition output store.
         Ok(Self {
             constant: storage.constant_map().clone(),

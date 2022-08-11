@@ -114,8 +114,11 @@ impl<N: Network> Ledger<N, BlockMemory<N>> {
 
     /// Initializes a new instance of `Ledger` with the given genesis block.
     pub fn new_with_genesis(genesis: &Block<N>) -> Result<Self> {
+        // Create a shared collection for atomic operations.
+        let shared_batch_ops = Default::default();
+
         // Initialize the block store.
-        let blocks = BlockStore::<N, BlockMemory<N>>::open()?;
+        let blocks = BlockStore::<N, BlockMemory<N>>::open(shared_batch_ops)?;
         // Initialize a new VM.
         let vm = VM::<N>::new()?;
 

@@ -99,3 +99,14 @@ thread_local!(pub static PROCESSING_SNARK_PARAMS: AtomicBool = AtomicBool::new(f
 // were indeed accounted for afterwards; this also future-proofs the codebase against possible
 // changes to the affected objects, i.e. marlin::snark::Parameters and all of its members.
 thread_local!(pub static SNARK_PARAMS_AFFINE_COUNT: AtomicU64 = AtomicU64::new(0));
+
+/// A wrapper type indicating that the object inside has already been verified.
+pub struct Verified<T>(pub T);
+
+impl<T> core::ops::Deref for Verified<T> {
+    type Target = T;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}

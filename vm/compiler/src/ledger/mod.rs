@@ -50,6 +50,7 @@ use console::{
     types::{Field, Group},
 };
 use snarkvm_parameters::testnet3::GenesisBytes;
+use snarkvm_utilities::Verified;
 
 use anyhow::Result;
 use indexmap::IndexMap;
@@ -112,7 +113,7 @@ impl<N: Network> Ledger<N, BlockMemory<N>, ProgramMemory<N>> {
     /// Initializes a new instance of `Ledger` with the genesis block.
     pub fn new() -> Result<Self> {
         // Load the genesis block.
-        let genesis = Block::<N>::from_bytes_le(GenesisBytes::load_bytes())?;
+        let genesis = Verified(Block::<N>::from_bytes_le(GenesisBytes::load_bytes())?);
         // Initialize the address.
         let address = Address::<N>::from_str("aleo1q6qstg8q8shwqf5m6q5fcenuwsdqsvp4hhsgfnx5chzjm3secyzqt9mxm8")?;
         // Initialize the ledger.
@@ -120,7 +121,7 @@ impl<N: Network> Ledger<N, BlockMemory<N>, ProgramMemory<N>> {
     }
 
     /// Initializes a new instance of `Ledger` with the given genesis block.
-    pub fn new_with_genesis(genesis: &Block<N>, address: Address<N>) -> Result<Self> {
+    pub fn new_with_genesis(genesis: &Verified<Block<N>>, address: Address<N>) -> Result<Self> {
         // Initialize the block store.
         let blocks = BlockStore::<N, BlockMemory<N>>::open()?;
         // Initialize the program store.
@@ -335,7 +336,7 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
     }
 
     /// Checks the given block is valid next block.
-    pub fn check_next_block(&self, block: &Block<N>) -> Result<()> {
+    pub fn check_next_block(&self, block: Block<N>) -> Result<Verified<Block<N>>> {
         // Ensure the previous block hash is correct.
         if self.current_hash != block.previous_hash() {
             bail!("The given block has an incorrect previous block hash")
@@ -530,14 +531,11 @@ impl<N: Network, B: BlockStorage<N>, P: ProgramStorage<N>> Ledger<N, B, P> {
             }
         }
 
-        Ok(())
+        Ok(Verified(block))
     }
 
     /// Adds the given block as the next block in the chain.
-    pub fn add_next_block(&mut self, block: &Block<N>) -> Result<()> {
-        // Ensure the given block is a valid next block.
-        self.check_next_block(block)?;
-
+    pub fn add_next_block(&mut self, block: &Verified<Block<N>>) -> Result<()> {
         /* ATOMIC CODE SECTION */
 
         // Add the block to the ledger. This code section executes atomically.

@@ -29,73 +29,79 @@ impl<N: Network> Parser for Program<N> {
             F(Function<N>),
         }
 
-        // Parse the imports from the string.
-        let (string, imports) = many0(Import::parse)(string)?;
-        // Parse the whitespace and comments from the string.
-        let (string, _) = Sanitizer::parse(string)?;
-        // Parse the 'program' keyword from the string.
-        let (string, _) = tag(Self::type_name())(string)?;
-        // Parse the whitespace from the string.
-        let (string, _) = Sanitizer::parse_whitespaces(string)?;
-        // Parse the program ID from the string.
-        let (string, id) = ProgramID::parse(string)?;
-        // Parse the whitespace from the string.
-        let (string, _) = Sanitizer::parse_whitespaces(string)?;
-        // Parse the semicolon ';' keyword from the string.
-        let (string, _) = tag(";")(string)?;
+        std::thread::scope(|s| {
+            s.spawn(|| {
+                // Parse the imports from the string.
+                let (string, imports) = many0(Import::parse)(string)?;
+                // Parse the whitespace and comments from the string.
+                let (string, _) = Sanitizer::parse(string)?;
+                // Parse the 'program' keyword from the string.
+                let (string, _) = tag(Self::type_name())(string)?;
+                // Parse the whitespace from the string.
+                let (string, _) = Sanitizer::parse_whitespaces(string)?;
+                // Parse the program ID from the string.
+                let (string, id) = ProgramID::parse(string)?;
+                // Parse the whitespace from the string.
+                let (string, _) = Sanitizer::parse_whitespaces(string)?;
+                // Parse the semicolon ';' keyword from the string.
+                let (string, _) = tag(";")(string)?;
 
-        // Parse the interface or function from the string.
-        let (string, components) = many1(alt((
-            map(Mapping::parse, |mapping| P::<N>::M(mapping)),
-            map(Interface::parse, |interface| P::<N>::I(interface)),
-            map(RecordType::parse, |record| P::<N>::R(record)),
-            map(Closure::parse, |closure| P::<N>::C(closure)),
-            map(Function::parse, |function| P::<N>::F(function)),
-        )))(string)?;
-        // Parse the whitespace and comments from the string.
-        let (string, _) = Sanitizer::parse(string)?;
+                // Parse the interface or function from the string.
+                let (string, components) = many1(alt((
+                    map(Mapping::parse, |mapping| P::<N>::M(mapping)),
+                    map(Interface::parse, |interface| P::<N>::I(interface)),
+                    map(RecordType::parse, |record| P::<N>::R(record)),
+                    map(Closure::parse, |closure| P::<N>::C(closure)),
+                    map(Function::parse, |function| P::<N>::F(function)),
+                )))(string)?;
+                // Parse the whitespace and comments from the string.
+                let (string, _) = Sanitizer::parse(string)?;
 
-        // Return the program.
-        map_res(take(0usize), move |_| {
-            // Initialize a new program.
-            let mut program = match Program::<N>::new(id) {
-                Ok(program) => program,
-                Err(error) => {
-                    eprintln!("{error}");
-                    return Err(error);
-                }
-            };
-            // Construct the program with the parsed components.
-            for component in components.iter() {
-                let result = match component {
-                    P::M(mapping) => program.add_mapping(mapping.clone()),
-                    P::I(interface) => program.add_interface(interface.clone()),
-                    P::R(record) => program.add_record(record.clone()),
-                    P::C(closure) => program.add_closure(closure.clone()),
-                    P::F(function) => program.add_function(function.clone()),
-                };
+                // Return the program.
+                map_res(take(0usize), move |_| {
+                    // Initialize a new program.
+                    let mut program = match Program::<N>::new(id) {
+                        Ok(program) => program,
+                        Err(error) => {
+                            eprintln!("{error}");
+                            return Err(error);
+                        }
+                    };
+                    // Construct the program with the parsed components.
+                    for component in components.iter() {
+                        let result = match component {
+                            P::M(mapping) => program.add_mapping(mapping.clone()),
+                            P::I(interface) => program.add_interface(interface.clone()),
+                            P::R(record) => program.add_record(record.clone()),
+                            P::C(closure) => program.add_closure(closure.clone()),
+                            P::F(function) => program.add_function(function.clone()),
+                        };
 
-                match result {
-                    Ok(_) => (),
-                    Err(error) => {
-                        eprintln!("{error}");
-                        return Err(error);
+                        match result {
+                            Ok(_) => (),
+                            Err(error) => {
+                                eprintln!("{error}");
+                                return Err(error);
+                            }
+                        }
                     }
-                }
-            }
-            // Lastly, add the imports (if any) to the program.
-            for import in imports.iter() {
-                match program.add_import(import.clone()) {
-                    Ok(_) => (),
-                    Err(error) => {
-                        eprintln!("{error}");
-                        return Err(error);
+                    // Lastly, add the imports (if any) to the program.
+                    for import in imports.iter() {
+                        match program.add_import(import.clone()) {
+                            Ok(_) => (),
+                            Err(error) => {
+                                eprintln!("{error}");
+                                return Err(error);
+                            }
+                        }
                     }
-                }
-            }
-            // Output the program.
-            Ok::<_, Error>(program)
-        })(string)
+                    // Output the program.
+                    Ok::<_, Error>(program)
+                })(string)
+            })
+            .join()
+            .map_err(|_| nom::Err::Error(nom::error::VerboseError::<&str> { errors: vec![] }))?
+        })
     }
 }
 

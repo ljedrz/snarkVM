@@ -69,6 +69,9 @@ version = "1.0.66"
 version = "0.10"
 default-features = false
 
+[dependencies.circular-queue]
+version = "0.2"
+
 [dependencies.colored]
 version = "2"
 

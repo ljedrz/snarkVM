@@ -453,9 +453,6 @@ pub struct VerifierKey<E: PairingEngine> {
     /// Each pair is in the form `(degree_bound, \beta^{degree_bound - max_degree} h),` where `h` is the generator of G2 above
     pub degree_bounds_and_neg_powers_of_h: Option<Vec<(usize, E::G2Affine)>>,
 
-    /// The prepared version of `degree_bounds_and_neg_powers_of_h`.
-    pub degree_bounds_and_prepared_neg_powers_of_h: Option<Vec<(usize, <E::G2Affine as PairingCurve>::Prepared)>>,
-
     /// The maximum degree supported by the trimmed parameters that `self` is
     /// a part of.
     pub supported_degree: usize,
@@ -493,15 +490,7 @@ impl<E: PairingEngine> CanonicalDeserialize for VerifierKey<E> {
             CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?;
         let supported_degree = CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?;
         let max_degree = CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?;
-        let degree_bounds_and_prepared_neg_powers_of_h =
-            degree_bounds_and_neg_powers_of_h.as_ref().map(|v| v.iter().map(|(b, pow)| (*b, pow.prepare())).collect());
-        Ok(VerifierKey {
-            vk,
-            degree_bounds_and_neg_powers_of_h,
-            degree_bounds_and_prepared_neg_powers_of_h,
-            supported_degree,
-            max_degree,
-        })
+        Ok(VerifierKey { vk, degree_bounds_and_neg_powers_of_h, supported_degree, max_degree })
     }
 }
 
@@ -543,16 +532,16 @@ impl<E: PairingEngine> ToBytes for VerifierKey<E> {
 
 /// `VerifierKey` is used to check evaluation proofs for a given commitment.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct VerifierUnionKey<'a, E: PairingEngine> {
+pub struct VerifierUnionKey<E: PairingEngine> {
     /// The verification key for the underlying KZG10 scheme.
-    pub vk: &'a kzg10::VerifierKey<E>,
+    pub vk: kzg10::VerifierKey<E>,
 
     /// Pairs a degree_bound with its corresponding G2 element.
     /// Each pair is in the form `(degree_bound, \beta^{degree_bound - max_degree} h),` where `h` is the generator of G2 above
-    pub degree_bounds_and_neg_powers_of_h: Option<Vec<(usize, &'a E::G2Affine)>>,
+    pub degree_bounds_and_neg_powers_of_h: Option<Vec<(usize, E::G2Affine)>>,
 
     /// The prepared version of `degree_bounds_and_neg_powers_of_h`.
-    pub degree_bounds_and_prepared_neg_powers_of_h: Option<Vec<(usize, &'a <E::G2Affine as PairingCurve>::Prepared)>>,
+    pub degree_bounds_and_prepared_neg_powers_of_h: Option<Vec<(usize, <E::G2Affine as PairingCurve>::Prepared)>>,
 
     /// The maximum degree supported by the trimmed parameters that `self` is
     /// a part of.
@@ -563,9 +552,9 @@ pub struct VerifierUnionKey<'a, E: PairingEngine> {
     pub max_degree: usize,
 }
 
-impl<'a, E: PairingEngine> VerifierUnionKey<'a, E> {
+impl<E: PairingEngine> VerifierUnionKey<E> {
     /// Find the appropriate shift for the degree bound.
-    pub fn get_shift_power(&self, degree_bound: usize) -> Option<&E::G2Affine> {
+    pub fn get_shift_power(&self, degree_bound: usize) -> Option<E::G2Affine> {
         self.degree_bounds_and_neg_powers_of_h
             .as_ref()
             .and_then(|v| v.binary_search_by(|(d, _)| d.cmp(&degree_bound)).ok().map(|i| v[i].1))
@@ -581,22 +570,28 @@ impl<'a, E: PairingEngine> VerifierUnionKey<'a, E> {
         self.max_degree
     }
 
-    pub fn union<T: IntoIterator<Item = &'a VerifierKey<E>>>(verifier_keys: T) -> Self {
+    pub fn union<'a, T: IntoIterator<Item = &'a VerifierKey<E>>>(verifier_keys: T) -> Self {
         let mut bounds_seen = HashSet::<usize>::new();
         let mut bounds_and_neg_powers = vec![];
         let mut bounds_and_prepared_neg_powers = vec![];
-        let mut biggest_vk: Option<&VerifierKey<E>> = None;
+        let mut biggest_vk: Option<VerifierKey<E>> = None;
         for vk in verifier_keys {
-            if biggest_vk.is_none() || biggest_vk.unwrap().supported_degree < vk.supported_degree {
-                biggest_vk = Some(vk);
+            if biggest_vk.is_none() || biggest_vk.as_ref().unwrap().supported_degree < vk.supported_degree {
+                biggest_vk = Some(vk.clone());
             }
             let new_bounds = vk.degree_bounds_and_neg_powers_of_h.as_ref().unwrap();
-            let new_prep_bounds = vk.degree_bounds_and_prepared_neg_powers_of_h.as_ref().unwrap();
+            let new_prep_bounds: Vec<(usize, <E::G2Affine as PairingCurve>::Prepared)> = vk
+                .degree_bounds_and_neg_powers_of_h
+                .as_ref()
+                .unwrap()
+                .iter()
+                .map(|(b, pow)| (*b, pow.prepare()))
+                .collect();
             assert_eq!(new_bounds.len(), new_prep_bounds.len());
-            for ((bound, neg_powers), (bound2, prep_neg_powers)) in new_bounds.iter().zip(new_prep_bounds) {
-                assert_eq!(bound, bound2);
+            for ((bound, neg_powers), (bound2, prep_neg_powers)) in new_bounds.into_iter().zip(new_prep_bounds) {
+                assert_eq!(*bound, bound2);
                 if bounds_seen.insert(*bound) {
-                    bounds_and_neg_powers.push((*bound, neg_powers));
+                    bounds_and_neg_powers.push((*bound, *neg_powers));
                     bounds_and_prepared_neg_powers.push((*bound, prep_neg_powers));
                 }
             }
@@ -604,7 +599,7 @@ impl<'a, E: PairingEngine> VerifierUnionKey<'a, E> {
 
         let biggest_vk = biggest_vk.unwrap();
         let mut vk_union = VerifierUnionKey::<E> {
-            vk: &biggest_vk.vk,
+            vk: biggest_vk.vk,
             degree_bounds_and_neg_powers_of_h: None,
             degree_bounds_and_prepared_neg_powers_of_h: None,
             supported_degree: biggest_vk.supported_degree,
@@ -675,9 +670,14 @@ impl<E: PairingEngine> Prepare for VerifierKey<E> {
     fn prepare(&self) -> PreparedVerifierKey<E> {
         let prepared_vk = kzg10::PreparedVerifierKey::<E>::prepare(&self.vk);
 
+        let degree_bounds_and_prepared_neg_powers_of_h = self
+            .degree_bounds_and_neg_powers_of_h
+            .as_ref()
+            .map(|v| v.iter().map(|(b, pow)| (*b, pow.prepare())).collect());
+
         PreparedVerifierKey::<E> {
             prepared_vk,
-            degree_bounds_and_prepared_neg_powers_of_h: self.degree_bounds_and_prepared_neg_powers_of_h.clone(),
+            degree_bounds_and_prepared_neg_powers_of_h,
             max_degree: self.max_degree,
             supported_degree: self.supported_degree,
         }

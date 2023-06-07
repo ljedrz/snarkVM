@@ -23,6 +23,7 @@ use std::{
     collections::{BTreeMap, BTreeSet},
     fmt,
     ops::{AddAssign, MulAssign, SubAssign},
+    sync::Arc,
 };
 
 use super::{LabeledPolynomial, PolynomialInfo};
@@ -451,7 +452,7 @@ pub struct VerifierKey<E: PairingEngine> {
 
     /// Pairs a degree_bound with its corresponding G2 element.
     /// Each pair is in the form `(degree_bound, \beta^{degree_bound - max_degree} h),` where `h` is the generator of G2 above
-    pub degree_bounds_and_neg_powers_of_h: Option<Vec<(usize, E::G2Affine)>>,
+    pub degree_bounds_and_neg_powers_of_h: Option<Arc<BTreeMap<usize, E::G2Affine>>>,
 
     /// The prepared version of `degree_bounds_and_neg_powers_of_h`.
     pub degree_bounds_and_prepared_neg_powers_of_h: Option<Vec<(usize, <E::G2Affine as PairingCurve>::Prepared)>>,
@@ -489,7 +490,7 @@ impl<E: PairingEngine> CanonicalDeserialize for VerifierKey<E> {
         validate: Validate,
     ) -> Result<Self, SerializationError> {
         let vk = CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?;
-        let degree_bounds_and_neg_powers_of_h: Option<Vec<(usize, E::G2Affine)>> =
+        let degree_bounds_and_neg_powers_of_h: Option<Arc<BTreeMap<usize, E::G2Affine>>> =
             CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?;
         let supported_degree = CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?;
         let max_degree = CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?;

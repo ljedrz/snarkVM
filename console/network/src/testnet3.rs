@@ -61,6 +61,8 @@ lazy_static! {
     /// The Poseidon hash function, using a rate of 8.
     pub static ref POSEIDON_8: Poseidon8<Testnet3> = Poseidon8::<Testnet3>::setup("AleoPoseidon8").expect("Failed to setup Poseidon8");
 
+    pub static ref UNIVERSAL_SRS: UniversalSRS<<Testnet3 as Environment>::PairingCurve> = UniversalSRS::load().unwrap();
+
     pub static ref CREDITS_PROVING_KEYS: IndexMap<String, Arc<MarlinProvingKey<Console>>> = {
         let mut map = IndexMap::new();
         snarkvm_parameters::insert_credit_keys!(map, MarlinProvingKey<Console>, Prover);
@@ -133,6 +135,11 @@ impl Network for Testnet3 {
     /// Returns the genesis block bytes.
     fn genesis_bytes() -> &'static [u8] {
         snarkvm_parameters::testnet3::GenesisBytes::load_bytes()
+    }
+
+    /// Returns the universal public parameters for the argument system.
+    fn universal_srs() -> &'static UniversalSRS<<Self as Environment>::PairingCurve> {
+        &UNIVERSAL_SRS
     }
 
     /// Returns the proving key for the given function name in `credits.aleo`.

@@ -14,16 +14,15 @@
 
 use super::*;
 
+use std::marker::PhantomData;
+
 #[derive(Clone)]
-pub struct UniversalSRS<N: Network> {
-    /// The universal SRS parameter.
-    srs: Arc<OnceCell<marlin::UniversalSRS<N::PairingCurve>>>,
-}
+pub struct UniversalSRS<N: Network>(PhantomData<N>);
 
 impl<N: Network> UniversalSRS<N> {
     /// Initializes the universal SRS.
-    pub fn load() -> Result<Self> {
-        Ok(Self { srs: Arc::new(OnceCell::new()) })
+    pub const fn load() -> Self {
+        Self(PhantomData)
     }
 
     /// Returns the circuit proving and verifying key.
@@ -44,36 +43,20 @@ impl<N: Network> UniversalSRS<N> {
     }
 }
 
-impl<N: Network> FromBytes for UniversalSRS<N> {
-    /// Reads the universal SRS from a buffer.
-    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        Ok(Self { srs: Arc::new(OnceCell::with_value(FromBytes::read_le(&mut reader)?)) })
-    }
-}
-
-impl<N: Network> ToBytes for UniversalSRS<N> {
-    /// Writes the universal SRS to a buffer.
-    fn write_le<W: Write>(&self, writer: W) -> IoResult<()> {
-        self.deref().write_le(writer)
-    }
-}
-
 impl<N: Network> Deref for UniversalSRS<N> {
     type Target = marlin::UniversalSRS<N::PairingCurve>;
 
     #[allow(clippy::let_and_return)]
     fn deref(&self) -> &Self::Target {
-        self.srs.get_or_init(|| {
-            #[cfg(feature = "aleo-cli")]
-            let timer = std::time::Instant::now();
+        #[cfg(feature = "aleo-cli")]
+        let timer = std::time::Instant::now();
 
-            // Load the universal SRS.
-            let universal_srs = marlin::UniversalSRS::load().expect("Failed to load the universal SRS");
+        // Load the universal SRS.
+        let universal_srs = N::universal_srs();
 
-            #[cfg(feature = "aleo-cli")]
-            println!("{}", format!(" • Loaded universal setup (in {} ms)", timer.elapsed().as_millis()).dimmed());
+        #[cfg(feature = "aleo-cli")]
+        println!("{}", format!(" • Loaded universal setup (in {} ms)", timer.elapsed().as_millis()).dimmed());
 
-            universal_srs
-        })
+        universal_srs
     }
 }

@@ -52,8 +52,6 @@ use colored::Colorize;
 
 #[derive(Clone)]
 pub struct Process<N: Network> {
-    /// The universal SRS.
-    universal_srs: Arc<UniversalSRS<N>>,
     /// The mapping of program IDs to stacks.
     stacks: IndexMap<ProgramID<N>, Stack<N>>,
 }
@@ -65,7 +63,7 @@ impl<N: Network> Process<N> {
         let timer = timer!("Process:setup");
 
         // Initialize the process.
-        let mut process = Self { universal_srs: Arc::new(UniversalSRS::load()?), stacks: IndexMap::new() };
+        let mut process = Self { stacks: IndexMap::new() };
         lap!(timer, "Initialize process");
 
         // Initialize the 'credits.aleo' program.
@@ -116,7 +114,7 @@ impl<N: Network> Process<N> {
         let timer = timer!("Process::load");
 
         // Initialize the process.
-        let mut process = Self { universal_srs: Arc::new(UniversalSRS::load()?), stacks: IndexMap::new() };
+        let mut process = Self { stacks: IndexMap::new() };
         lap!(timer, "Initialize process");
 
         // Initialize the 'credits.aleo' program.
@@ -162,7 +160,7 @@ impl<N: Network> Process<N> {
     #[cfg(feature = "wasm")]
     pub fn load_web() -> Result<Self> {
         // Initialize the process.
-        let mut process = Self { universal_srs: Arc::new(UniversalSRS::load()?), stacks: IndexMap::new() };
+        let mut process = Self { stacks: IndexMap::new() };
 
         // Initialize the 'credits.aleo' program.
         let program = Program::credits()?;
@@ -183,7 +181,7 @@ impl<N: Network> Process<N> {
     #[inline]
     pub fn load_with_cache(cache: &mut HashMap<String, (ProvingKey<N>, VerifyingKey<N>)>) -> Result<Self> {
         // Initialize the process.
-        let mut process = Self { universal_srs: Arc::new(UniversalSRS::load()?), stacks: IndexMap::new() };
+        let mut process = Self { stacks: IndexMap::new() };
 
         // Initialize the 'credits.aleo' program.
         let program = Program::credits()?;
@@ -214,8 +212,8 @@ impl<N: Network> Process<N> {
 
     /// Returns the universal SRS.
     #[inline]
-    pub const fn universal_srs(&self) -> &Arc<UniversalSRS<N>> {
-        &self.universal_srs
+    pub const fn universal_srs(&self) -> UniversalSRS<N> {
+        UniversalSRS::load()
     }
 
     /// Returns `true` if the process contains the program with the given ID.

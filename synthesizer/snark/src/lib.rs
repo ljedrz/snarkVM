@@ -20,7 +20,6 @@
 use console::network::{prelude::*, FiatShamir};
 use snarkvm_algorithms::{snark::marlin, traits::SNARK};
 
-use once_cell::sync::OnceCell;
 use std::sync::Arc;
 
 #[cfg(feature = "aleo-cli")]
@@ -99,7 +98,7 @@ pub(crate) mod test_helpers {
         INSTANCE
             .get_or_init(|| {
                 let assignment = sample_assignment();
-                let srs = UniversalSRS::load().unwrap();
+                let srs = Self::universal_srs();
                 let (proving_key, verifying_key) = srs.to_circuit_key("test", &assignment).unwrap();
                 (proving_key, verifying_key)
             })

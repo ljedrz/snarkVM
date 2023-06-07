@@ -70,7 +70,7 @@ impl<N: Network> CoinbasePuzzle<N> {
     pub fn load() -> Result<Self> {
         let max_degree = N::COINBASE_PUZZLE_DEGREE;
         // Load the universal SRS.
-        let universal_srs = UniversalSRS::<N>::load()?;
+        let universal_srs = UniversalSRS::<N>::load();
         // Trim the universal SRS to the maximum degree.
         Self::trim(&*universal_srs, PuzzleConfig { degree: max_degree })
     }

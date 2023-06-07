@@ -166,26 +166,9 @@ impl<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> SonicKZG10<E, S> {
         let prepared_h = pp.prepared_h.clone();
         let prepared_beta_h = pp.prepared_beta_h.clone();
 
-        let degree_bounds_and_neg_powers_of_h =
-            if pp.neg_powers_of_beta_h().is_empty() { None } else { Some(pp.neg_powers_of_beta_h()) };
-
-        let degree_bounds_and_prepared_neg_powers_of_h =
-            degree_bounds_and_neg_powers_of_h.as_ref().map(|degree_bounds_and_neg_powers_of_h| {
-                degree_bounds_and_neg_powers_of_h
-                    .iter()
-                    .map(|(d, affine)| (*d, affine.prepare()))
-                    .collect::<Vec<(usize, <E::G2Affine as PairingCurve>::Prepared)>>()
-            });
-
         let kzg10_vk = kzg10::VerifierKey::<E> { g, gamma_g, h, beta_h, prepared_h, prepared_beta_h };
 
-        let vk = VerifierKey {
-            vk: kzg10_vk,
-            degree_bounds_and_neg_powers_of_h,
-            degree_bounds_and_prepared_neg_powers_of_h,
-            supported_degree,
-            max_degree,
-        };
+        let vk = VerifierKey { vk: kzg10_vk, supported_degree, max_degree };
 
         end_timer!(trim_time);
         Ok((ck, vk))

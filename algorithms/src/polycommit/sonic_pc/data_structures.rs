@@ -450,13 +450,6 @@ pub struct VerifierKey<E: PairingEngine> {
     /// The verification key for the underlying KZG10 scheme.
     pub vk: kzg10::VerifierKey<E>,
 
-    /// Pairs a degree_bound with its corresponding G2 element.
-    /// Each pair is in the form `(degree_bound, \beta^{degree_bound - max_degree} h),` where `h` is the generator of G2 above
-    pub degree_bounds_and_neg_powers_of_h: Option<Arc<BTreeMap<usize, E::G2Affine>>>,
-
-    /// The prepared version of `degree_bounds_and_neg_powers_of_h`.
-    pub degree_bounds_and_prepared_neg_powers_of_h: Option<Vec<(usize, <E::G2Affine as PairingCurve>::Prepared)>>,
-
     /// The maximum degree supported by the trimmed parameters that `self` is
     /// a part of.
     pub supported_degree: usize,
@@ -469,7 +462,6 @@ pub struct VerifierKey<E: PairingEngine> {
 impl<E: PairingEngine> CanonicalSerialize for VerifierKey<E> {
     fn serialize_with_mode<W: Write>(&self, mut writer: W, compress: Compress) -> Result<(), SerializationError> {
         self.vk.serialize_with_mode(&mut writer, compress)?;
-        self.degree_bounds_and_neg_powers_of_h.serialize_with_mode(&mut writer, compress)?;
         self.supported_degree.serialize_with_mode(&mut writer, compress)?;
         self.max_degree.serialize_with_mode(&mut writer, compress)?;
         Ok(())
@@ -477,7 +469,6 @@ impl<E: PairingEngine> CanonicalSerialize for VerifierKey<E> {
 
     fn serialized_size(&self, compress: Compress) -> usize {
         self.vk.serialized_size(compress)
-            + self.degree_bounds_and_neg_powers_of_h.serialized_size(compress)
             + self.supported_degree.serialized_size(compress)
             + self.max_degree.serialized_size(compress)
     }
@@ -490,26 +481,15 @@ impl<E: PairingEngine> CanonicalDeserialize for VerifierKey<E> {
         validate: Validate,
     ) -> Result<Self, SerializationError> {
         let vk = CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?;
-        let degree_bounds_and_neg_powers_of_h: Option<Arc<BTreeMap<usize, E::G2Affine>>> =
-            CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?;
         let supported_degree = CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?;
         let max_degree = CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?;
-        let degree_bounds_and_prepared_neg_powers_of_h =
-            degree_bounds_and_neg_powers_of_h.as_ref().map(|v| v.iter().map(|(b, pow)| (*b, pow.prepare())).collect());
-        Ok(VerifierKey {
-            vk,
-            degree_bounds_and_neg_powers_of_h,
-            degree_bounds_and_prepared_neg_powers_of_h,
-            supported_degree,
-            max_degree,
-        })
+        Ok(VerifierKey { vk, supported_degree, max_degree })
     }
 }
 
 impl<E: PairingEngine> Valid for VerifierKey<E> {
     fn check(&self) -> Result<(), SerializationError> {
         Valid::check(&self.vk)?;
-        Valid::check(&self.degree_bounds_and_neg_powers_of_h)?;
         Valid::check(&self.supported_degree)?;
         Valid::check(&self.max_degree)?;
         Ok(())
@@ -521,7 +501,6 @@ impl<E: PairingEngine> Valid for VerifierKey<E> {
     {
         let batch: Vec<_> = batch.collect();
         Valid::batch_check(batch.iter().map(|v| &v.vk))?;
-        Valid::batch_check(batch.iter().map(|v| &v.degree_bounds_and_neg_powers_of_h))?;
         Valid::batch_check(batch.iter().map(|v| &v.supported_degree))?;
         Valid::batch_check(batch.iter().map(|v| &v.max_degree))?;
         Ok(())
@@ -548,13 +527,6 @@ pub struct VerifierUnionKey<'a, E: PairingEngine> {
     /// The verification key for the underlying KZG10 scheme.
     pub vk: &'a kzg10::VerifierKey<E>,
 
-    /// Pairs a degree_bound with its corresponding G2 element.
-    /// Each pair is in the form `(degree_bound, \beta^{degree_bound - max_degree} h),` where `h` is the generator of G2 above
-    pub degree_bounds_and_neg_powers_of_h: Option<Vec<(usize, &'a E::G2Affine)>>,
-
-    /// The prepared version of `degree_bounds_and_neg_powers_of_h`.
-    pub degree_bounds_and_prepared_neg_powers_of_h: Option<Vec<(usize, &'a <E::G2Affine as PairingCurve>::Prepared)>>,
-
     /// The maximum degree supported by the trimmed parameters that `self` is
     /// a part of.
     pub supported_degree: usize,
@@ -565,6 +537,7 @@ pub struct VerifierUnionKey<'a, E: PairingEngine> {
 }
 
 impl<'a, E: PairingEngine> VerifierUnionKey<'a, E> {
+    /*
     /// Find the appropriate shift for the degree bound.
     pub fn get_shift_power(&self, degree_bound: usize) -> Option<&E::G2Affine> {
         self.degree_bounds_and_neg_powers_of_h
@@ -624,8 +597,9 @@ impl<'a, E: PairingEngine> VerifierUnionKey<'a, E> {
         }
         vk_union
     }
+    */
 }
-
+/*
 impl<E: PairingEngine> ToConstraintField<E::Fq> for VerifierKey<E> {
     fn to_field_elements(&self) -> Result<Vec<E::Fq>, ConstraintFieldError> {
         let mut res = Vec::new();
@@ -642,16 +616,12 @@ impl<E: PairingEngine> ToConstraintField<E::Fq> for VerifierKey<E> {
         Ok(res)
     }
 }
-
+*/
 /// `PreparedVerifierKey` is used to check evaluation proofs for a given commitment.
 #[derive(Clone, Debug)]
 pub struct PreparedVerifierKey<E: PairingEngine> {
     /// The verification key for the underlying KZG10 scheme.
     pub prepared_vk: kzg10::PreparedVerifierKey<E>,
-    /// Information required to enforce degree bounds. Each pair
-    /// is of the form `(degree_bound, shifting_advice)`.
-    /// This is `None` if `self` does not support enforcing any degree bounds.
-    pub degree_bounds_and_prepared_neg_powers_of_h: Option<Vec<(usize, <E::G2Affine as PairingCurve>::Prepared)>>,
     /// The maximum degree supported by the `UniversalParams` `self` was derived
     /// from.
     pub max_degree: usize,
@@ -659,7 +629,7 @@ pub struct PreparedVerifierKey<E: PairingEngine> {
     /// a part of.
     pub supported_degree: usize,
 }
-
+/*
 impl<E: PairingEngine> PreparedVerifierKey<E> {
     /// Find the appropriate shift for the degree bound.
     pub fn get_prepared_shift_power(&self, bound: usize) -> Option<<E::G2Affine as PairingCurve>::Prepared> {
@@ -668,7 +638,7 @@ impl<E: PairingEngine> PreparedVerifierKey<E> {
             .and_then(|v| v.binary_search_by(|(d, _)| d.cmp(&bound)).ok().map(|i| v[i].1.clone()))
     }
 }
-
+*/
 impl<E: PairingEngine> Prepare for VerifierKey<E> {
     type Prepared = PreparedVerifierKey<E>;
 
@@ -676,12 +646,7 @@ impl<E: PairingEngine> Prepare for VerifierKey<E> {
     fn prepare(&self) -> PreparedVerifierKey<E> {
         let prepared_vk = kzg10::PreparedVerifierKey::<E>::prepare(&self.vk);
 
-        PreparedVerifierKey::<E> {
-            prepared_vk,
-            degree_bounds_and_prepared_neg_powers_of_h: self.degree_bounds_and_prepared_neg_powers_of_h.clone(),
-            max_degree: self.max_degree,
-            supported_degree: self.supported_degree,
-        }
+        PreparedVerifierKey::<E> { prepared_vk, max_degree: self.max_degree, supported_degree: self.supported_degree }
     }
 }
 

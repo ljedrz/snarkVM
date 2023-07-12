@@ -14,6 +14,8 @@
 
 use super::*;
 
+use std::borrow::Cow;
+
 impl<E: Environment, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> HashUncompressed
     for BHPHasher<E, NUM_WINDOWS, WINDOW_SIZE>
 {
@@ -31,13 +33,14 @@ impl<E: Environment, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> HashUncompres
         }
 
         // Ensure the input size is within the parameter size.
-        let mut input = input.to_vec();
+        let mut input = Cow::Borrowed(input);
         match input.len() <= Self::MAX_BITS {
             true => {
                 // Pad the input to a multiple of `BHP_CHUNK_SIZE` for hashing.
                 if input.len() % BHP_CHUNK_SIZE != 0 {
                     let padding = BHP_CHUNK_SIZE - (input.len() % BHP_CHUNK_SIZE);
-                    input.resize(input.len() + padding, Boolean::constant(false));
+                    let input_len = input.len();
+                    input.to_mut().resize(input_len + padding, Boolean::constant(false));
                     assert_eq!(input.len() % BHP_CHUNK_SIZE, 0, "Input must be a multiple of {BHP_CHUNK_SIZE}");
                 }
             }

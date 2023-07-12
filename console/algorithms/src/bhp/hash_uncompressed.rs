@@ -37,10 +37,11 @@ impl<E: Environment, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> HashUncompres
         // Initialize a variable to store the hash from the current iteration.
         let mut digest = Group::<E>::zero();
 
+        // Initialize a vector for the hash preimages.
+        let mut preimage = Vec::with_capacity(num_hasher_bits);
+
         // Compute the hash of the input.
         for (i, input_bits) in input.chunks(max_input_bits_per_iteration).enumerate() {
-            // Initialize a vector for the hash preimage.
-            let mut preimage = Vec::with_capacity(num_hasher_bits);
             // Determine if this is the first iteration.
             match i == 0 {
                 // Construct the first iteration as: [ 0...0 || DOMAIN || LENGTH(INPUT) || INPUT[0..BLOCK_SIZE] ].
@@ -58,6 +59,8 @@ impl<E: Environment, const NUM_WINDOWS: u8, const WINDOW_SIZE: u8> HashUncompres
             }
             // Hash the preimage for this iteration.
             digest = self.hasher.hash_uncompressed(&preimage)?;
+            // Clear the vector, preserving its allocation.
+            preimage.clear();
         }
 
         Ok(digest)

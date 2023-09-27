@@ -51,7 +51,7 @@ impl<N: Network> Package<N> {
         // Initialize the assignments.
         let assignments = Assignments::<N>::default();
         // Initialize the call stack.
-        let call_stack = CallStack::CheckDeployment(vec![request], *private_key, assignments.clone());
+        let call_stack = CallStack::CheckDeployment(vec![request], private_key.clone(), assignments.clone());
         // Synthesize the circuit.
         let response = stack.execute_function::<A>(call_stack)?;
         // Retrieve the call metrics.

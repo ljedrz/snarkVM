@@ -73,7 +73,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             };
 
             // Determine whether to decrypt this record (or not), based on the filter.
-            let commitment = match filter {
+            let commitment = match &filter {
                 RecordsFilter::All => Ok(Some(commitment)),
                 RecordsFilter::Spent => Record::<N, Plaintext<N>>::tag(sk_tag, commitment).and_then(|tag| {
                     // Determine if the record is spent.
@@ -90,22 +90,26 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
                     })
                 }),
                 RecordsFilter::SlowSpent(private_key) => {
-                    Record::<N, Plaintext<N>>::serial_number(private_key, commitment).and_then(|serial_number| {
-                        // Determine if the record is spent.
-                        self.contains_serial_number(&serial_number).map(|is_spent| match is_spent {
-                            true => Some(commitment),
-                            false => None,
-                        })
-                    })
+                    Record::<N, Plaintext<N>>::serial_number(private_key.clone(), commitment).and_then(
+                        |serial_number| {
+                            // Determine if the record is spent.
+                            self.contains_serial_number(&serial_number).map(|is_spent| match is_spent {
+                                true => Some(commitment),
+                                false => None,
+                            })
+                        },
+                    )
                 }
                 RecordsFilter::SlowUnspent(private_key) => {
-                    Record::<N, Plaintext<N>>::serial_number(private_key, commitment).and_then(|serial_number| {
-                        // Determine if the record is spent.
-                        self.contains_serial_number(&serial_number).map(|is_spent| match is_spent {
-                            true => None,
-                            false => Some(commitment),
-                        })
-                    })
+                    Record::<N, Plaintext<N>>::serial_number(private_key.clone(), commitment).and_then(
+                        |serial_number| {
+                            // Determine if the record is spent.
+                            self.contains_serial_number(&serial_number).map(|is_spent| match is_spent {
+                                true => None,
+                                false => Some(commitment),
+                            })
+                        },
+                    )
                 }
             };
 

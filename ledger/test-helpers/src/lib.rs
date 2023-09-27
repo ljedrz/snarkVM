@@ -189,7 +189,7 @@ pub fn sample_fee_private(deployment_or_execution_id: Field<CurrentNetwork>, rng
     // Retrieve a credits record.
     let credits = transaction.records().next().unwrap().1.clone();
     // Decrypt the record.
-    let credits = credits.decrypt(&private_key.try_into().unwrap()).unwrap();
+    let credits = credits.decrypt(&private_key.clone().try_into().unwrap()).unwrap();
     // Set the fee amount.
     let fee = 10_000_000;
 
@@ -357,7 +357,7 @@ fn sample_genesis_block_and_components_raw(
 ) -> (Block<CurrentNetwork>, Transaction<CurrentNetwork>, PrivateKey<CurrentNetwork>) {
     // Sample the genesis private key.
     let private_key = PrivateKey::new(rng).unwrap();
-    let address = Address::<CurrentNetwork>::try_from(private_key).unwrap();
+    let address = Address::<CurrentNetwork>::try_from(private_key.clone()).unwrap();
 
     // Prepare the locator.
     let locator = ("credits.aleo", "transfer_public_to_private");

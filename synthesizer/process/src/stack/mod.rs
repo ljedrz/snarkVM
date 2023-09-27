@@ -102,14 +102,14 @@ impl<N: Network> CallStack<N> {
     pub fn replicate(&self) -> Self {
         match self {
             CallStack::Authorize(requests, private_key, authorization) => {
-                CallStack::Authorize(requests.clone(), *private_key, authorization.replicate())
+                CallStack::Authorize(requests.clone(), private_key.clone(), authorization.replicate())
             }
             CallStack::Synthesize(requests, private_key, authorization) => {
-                CallStack::Synthesize(requests.clone(), *private_key, authorization.replicate())
+                CallStack::Synthesize(requests.clone(), private_key.clone(), authorization.replicate())
             }
             CallStack::CheckDeployment(requests, private_key, assignments) => CallStack::CheckDeployment(
                 requests.clone(),
-                *private_key,
+                private_key.clone(),
                 Arc::new(RwLock::new(assignments.read().clone())),
             ),
             CallStack::Evaluate(authorization) => CallStack::Evaluate(authorization.replicate()),

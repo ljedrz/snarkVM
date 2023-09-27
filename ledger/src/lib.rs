@@ -85,7 +85,7 @@ use rayon::prelude::*;
 
 pub type RecordMap<N> = IndexMap<Field<N>, Record<N, Plaintext<N>>>;
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Clone, Debug)]
 pub enum RecordsFilter<N: Network> {
     /// Returns all records associated with the account.
     All,

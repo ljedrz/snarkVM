@@ -54,7 +54,7 @@ impl<N: Network> Stack<N> {
         // This logic is only executed if the program contains external calls.
         if self.get_number_of_calls(&function_name)? > 1 {
             // Construct the call stack.
-            let call_stack = CallStack::Authorize(vec![request], *private_key, authorization.clone());
+            let call_stack = CallStack::Authorize(vec![request], private_key.clone(), authorization.clone());
             // Construct the authorization from the function.
             let _response = self.execute_function::<A>(call_stack)?;
         }

@@ -41,3 +41,6 @@ default-features = false
 
 [dependencies.serde]
 version = "1.0"
+
+[dependencies.zeroize]
+version = "1"

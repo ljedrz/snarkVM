@@ -29,6 +29,7 @@ use snarkvm_fields::{Field, PrimeField};
 
 use core::{borrow::Borrow, marker::PhantomData};
 use itertools::Itertools;
+use smol_str::SmolStr;
 use std::collections::BTreeMap;
 
 /// The algebraic holographic proof defined in [CHMMVW19](https://eprint.iacr.org/2019/1047).
@@ -46,8 +47,8 @@ struct VerifierChallenges<F: Field> {
     gamma: F,
 }
 
-pub(crate) fn witness_label(circuit_id: CircuitId, poly: &str, i: usize) -> String {
-    format!("circuit_{circuit_id}_{poly}_{i:0>8}")
+pub(crate) fn witness_label(circuit_id: CircuitId, poly: &str, i: usize) -> SmolStr {
+    format!("circuit_{circuit_id}_{poly}_{i:0>8}").into()
 }
 
 pub(crate) struct NonZeroDomains<F: PrimeField> {
@@ -171,7 +172,7 @@ impl<F: PrimeField, SM: SNARKMode> AHPForR1CS<F, SM> {
         prover_third_message: &prover::ThirdMessage<F>,
         prover_fourth_message: &prover::FourthMessage<F>,
         state: &verifier::State<F, SM>,
-    ) -> Result<BTreeMap<String, LinearCombination<F>>, AHPError> {
+    ) -> Result<BTreeMap<SmolStr, LinearCombination<F>>, AHPError> {
         assert!(!public_inputs.is_empty());
         let max_constraint_domain = state.max_constraint_domain;
         let max_variable_domain = state.max_variable_domain;
@@ -396,8 +397,8 @@ impl<F: PrimeField, SM: SNARKMode> AHPForR1CS<F, SM> {
         challenges: VerifierChallenges<F>,
         rc_size: F,
     ) -> (LinearCombination<F>, LinearCombination<F>) {
-        let label_a_poly = format!("circuit_{id}_a_poly_{matrix}");
-        let label_b_poly = format!("circuit_{id}_b_poly_{matrix}");
+        let label_a_poly: SmolStr = format!("circuit_{id}_a_poly_{matrix}").into();
+        let label_b_poly: SmolStr = format!("circuit_{id}_b_poly_{matrix}").into();
         let VerifierChallenges { alpha, beta, gamma } = challenges;
 
         // When running as the prover, who has access to a(X) and b(X), we directly return those
@@ -411,11 +412,11 @@ impl<F: PrimeField, SM: SNARKMode> AHPForR1CS<F, SM> {
         };
 
         // When running as the verifier, we need to construct a(X) and b(X) from the indexing polynomials
-        let label_col = format!("circuit_{id}_col_{matrix}");
-        let label_row = format!("circuit_{id}_row_{matrix}");
-        let label_row_col = format!("circuit_{id}_row_col_{matrix}");
+        let label_col: SmolStr = format!("circuit_{id}_col_{matrix}").into();
+        let label_row: SmolStr = format!("circuit_{id}_row_{matrix}").into();
+        let label_row_col: SmolStr = format!("circuit_{id}_row_col_{matrix}").into();
         // recall that row_col_val(X) is M_{i,j}*rowcol(X)
-        let label_row_col_val = format!("circuit_{id}_row_col_val_{matrix}");
+        let label_row_col_val: SmolStr = format!("circuit_{id}_row_col_val_{matrix}").into();
         let a = LinearCombination::new(label_a_poly, [(v_rc_at_alpha_beta, label_row_col_val)]);
         let mut b = LinearCombination::new(label_b_poly, [
             (alpha * beta, LCTerm::One),
@@ -468,7 +469,7 @@ where
             let value = if let LCTerm::PolyLabel(label) = term {
                 self.iter()
                     .find(|p| (*p).borrow().label() == label)
-                    .ok_or_else(|| AHPError::MissingEval(format!("Missing {} for {}", label, lc.label)))?
+                    .ok_or_else(|| AHPError::MissingEval(format!("Missing {} for {}", label, lc.label).into()))?
                     .borrow()
                     .evaluate(point)
             } else {

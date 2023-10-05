@@ -145,6 +145,9 @@ version = "1.11"
 default-features = false
 features = [ "const_generics", "const_new" ]
 
+[dependencies.smol_str]
+version = "0.2"
+
 [dependencies.thiserror]
 version = "1.0"
 

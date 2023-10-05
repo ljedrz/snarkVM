@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use smol_str::SmolStr;
+
 /// The error type for `PolynomialCommitment`.
 #[derive(Debug)]
 pub enum PCError {
@@ -21,14 +23,14 @@ pub enum PCError {
     /// input to the `PC::open`.
     MissingPolynomial {
         /// The label of the missing polynomial.
-        label: String,
+        label: SmolStr,
     },
 
     /// `Evaluations` does not contain an evaluation for the polynomial labelled
     /// `label` at a particular query.
     MissingEvaluation {
         /// The label of the missing polynomial.
-        label: String,
+        label: SmolStr,
     },
 
     /// The provided polynomial was meant to be hiding, but `rng` was `None`.
@@ -69,7 +71,7 @@ pub enum PCError {
 
     /// The provided equation contained multiple polynomials, of which least one
     /// had a strict degree bound.
-    EquationHasDegreeBounds(String),
+    EquationHasDegreeBounds(SmolStr),
 
     /// The required degree bound is not supported by ck/vk
     UnsupportedDegreeBound(usize),
@@ -89,7 +91,7 @@ pub enum PCError {
         /// Maximum degree.
         max_degree: usize,
         /// Index of the offending polynomial.
-        label: String,
+        label: SmolStr,
     },
 
     Terminated,

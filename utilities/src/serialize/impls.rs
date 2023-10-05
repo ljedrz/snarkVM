@@ -21,7 +21,7 @@ pub use crate::{
 use crate::{serialize::traits::*, SerializationError};
 
 use bincode::Options;
-
+use smol_str::SmolStr;
 use std::{borrow::Cow, collections::BTreeMap, marker::PhantomData, rc::Rc, sync::Arc};
 
 impl Valid for bool {
@@ -56,6 +56,30 @@ impl CanonicalDeserialize for bool {
 impl CanonicalSerialize for String {
     #[inline]
     fn serialize_with_mode<W: Write>(&self, mut writer: W, _compress: Compress) -> Result<(), SerializationError> {
+        Ok(bincode::serialize_into(&mut writer, self.as_str())?)
+    }
+
+    #[inline]
+    fn serialized_size(&self, _compress: Compress) -> usize {
+        self.len() + 8
+    }
+}
+
+impl CanonicalSerialize for SmolStr {
+    #[inline]
+    fn serialize_with_mode<W: Write>(&self, mut writer: W, _compress: Compress) -> Result<(), SerializationError> {
+        Ok(bincode::serialize_into(&mut writer, self.as_str())?)
+    }
+
+    #[inline]
+    fn serialized_size(&self, _compress: Compress) -> usize {
+        self.len() + 8
+    }
+}
+
+impl CanonicalSerialize for &str {
+    #[inline]
+    fn serialize_with_mode<W: Write>(&self, mut writer: W, _compress: Compress) -> Result<(), SerializationError> {
         Ok(bincode::serialize_into(&mut writer, self)?)
     }
 
@@ -66,6 +90,21 @@ impl CanonicalSerialize for String {
 }
 
 impl Valid for String {
+    #[inline]
+    fn check(&self) -> Result<(), SerializationError> {
+        Ok(())
+    }
+
+    #[inline]
+    fn batch_check<'a>(_batch: impl Iterator<Item = &'a Self>) -> Result<(), SerializationError>
+    where
+        Self: 'a,
+    {
+        Ok(())
+    }
+}
+
+impl Valid for SmolStr {
     #[inline]
     fn check(&self) -> Result<(), SerializationError> {
         Ok(())
@@ -92,6 +131,23 @@ impl CanonicalDeserialize for String {
             .allow_trailing_bytes() // so is this
             .with_limit(10 * 1024)  // a limit to guard against OOMs
             .deserialize_from(reader)?)
+    }
+}
+
+impl CanonicalDeserialize for SmolStr {
+    #[inline]
+    fn deserialize_with_mode<R: Read>(
+        reader: R,
+        _compress: Compress,
+        _validate: Validate,
+    ) -> Result<Self, SerializationError> {
+        let s: String = bincode::DefaultOptions::new()
+            .with_fixint_encoding() // this option is for compatibility with the defaults
+            .allow_trailing_bytes() // so is this
+            .with_limit(10 * 1024)  // a limit to guard against OOMs
+            .deserialize_from(reader)?;
+
+        Ok(s.into())
     }
 }
 

@@ -25,8 +25,9 @@ use snarkvm_curves::traits::{AffineCurve, PairingCurve, PairingEngine, Projectiv
 use snarkvm_fields::{One, Zero};
 
 use anyhow::{bail, Result};
-use core::{convert::TryInto, marker::PhantomData, ops::Mul};
+use core::{marker::PhantomData, ops::Mul};
 use rand_core::{RngCore, SeedableRng};
+use smol_str::SmolStr;
 use std::{
     borrow::Borrow,
     collections::{BTreeMap, BTreeSet},
@@ -198,7 +199,7 @@ impl<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> SonicKZG10<E, S> {
             )?;
             let degree_bound = p.degree_bound();
             let hiding_bound = p.hiding_bound();
-            let label = p.label().to_string();
+            let label: SmolStr = p.label().into();
 
             pool.add_job(move || {
                 let mut rng = seed.map(rand::rngs::StdRng::from_seed);
@@ -249,7 +250,7 @@ impl<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> SonicKZG10<E, S> {
                     });
                 let comm = kzg10::KZGCommitment(comm.to_affine());
 
-                Ok((LabeledCommitment::new(label.to_string(), comm, degree_bound), rand))
+                Ok((LabeledCommitment::new(label.into(), comm, degree_bound), rand))
             });
         }
         let results: Vec<Result<_, PCError>> = pool.execute_all();
@@ -321,7 +322,7 @@ impl<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> SonicKZG10<E, S> {
 
             for label in labels {
                 let (polynomial, rand) =
-                    poly_rand.get(label as &str).ok_or(PCError::MissingPolynomial { label: label.to_string() })?;
+                    poly_rand.get(label as &str).ok_or(PCError::MissingPolynomial { label: label.to_owned() })?;
 
                 query_polys.push(*polynomial);
                 query_rands.push(*rand);
@@ -379,11 +380,11 @@ impl<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> SonicKZG10<E, S> {
             let mut values_to_combine = Vec::new();
             for label in labels.into_iter() {
                 let commitment =
-                    commitments.get(label).ok_or(PCError::MissingPolynomial { label: label.to_string() })?;
+                    commitments.get(label.as_str()).ok_or(PCError::MissingPolynomial { label: label.to_owned() })?;
 
                 let v_i = values
                     .get(&(label.clone(), *query))
-                    .ok_or(PCError::MissingEvaluation { label: label.to_string() })?;
+                    .ok_or(PCError::MissingEvaluation { label: label.to_owned() })?;
 
                 comms_to_combine.push(commitment);
                 values_to_combine.push(*v_i);
@@ -431,7 +432,7 @@ impl<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> SonicKZG10<E, S> {
         let mut lc_info = Vec::new();
 
         for lc in linear_combinations {
-            let lc_label = lc.label().to_string();
+            let lc_label = lc.label().to_owned();
             let mut poly = DensePolynomial::zero();
             let mut randomness = Randomness::empty();
             let mut degree_bound = None;
@@ -440,9 +441,9 @@ impl<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> SonicKZG10<E, S> {
             let num_polys = lc.len();
             // We filter out l.is_one() entries because those constants are not committed to and used directly by the verifier.
             for (coeff, label) in lc.iter().filter(|(_, l)| !l.is_one()) {
-                let label: &String = label.try_into().expect("cannot be one!");
+                let label: &SmolStr = label.try_into().expect("cannot be one!");
                 let (cur_poly, cur_rand) =
-                    label_map.get(label as &str).ok_or(PCError::MissingPolynomial { label: label.to_string() })?;
+                    label_map.get(label.as_str()).ok_or(PCError::MissingPolynomial { label: label.to_owned() })?;
                 if let Some(cur_degree_bound) = cur_poly.degree_bound() {
                     if num_polys != 1 {
                         return Err(PCError::EquationHasDegreeBounds(lc_label));
@@ -495,7 +496,7 @@ impl<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> SonicKZG10<E, S> {
 
         let lc_processing_time = start_timer!(|| "Combining commitments");
         for lc in linear_combinations {
-            let lc_label = lc.label().to_string();
+            let lc_label = lc.label().to_owned();
             let num_polys = lc.len();
 
             let mut degree_bound = None;
@@ -509,10 +510,10 @@ impl<E: PairingEngine, S: AlgebraicSponge<E::Fq, 2>> SonicKZG10<E, S> {
                         }
                     }
                 } else {
-                    let label: &String = label.try_into().unwrap();
+                    let label: &SmolStr = label.try_into().unwrap();
                     let &cur_comm = label_comm_map
-                        .get(label as &str)
-                        .ok_or(PCError::MissingPolynomial { label: label.to_string() })?;
+                        .get(label.as_str())
+                        .ok_or(PCError::MissingPolynomial { label: label.to_owned() })?;
 
                     if cur_comm.degree_bound().is_some() {
                         if num_polys != 1 {

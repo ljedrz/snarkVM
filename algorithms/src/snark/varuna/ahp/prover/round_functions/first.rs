@@ -28,6 +28,7 @@ use crate::{
 };
 use itertools::Itertools;
 use rand_core::RngCore;
+use smol_str::SmolStr;
 use snarkvm_fields::PrimeField;
 use snarkvm_utilities::cfg_into_iter;
 
@@ -51,7 +52,7 @@ impl<F: PrimeField, SM: SNARKMode> AHPForR1CS<F, SM> {
             })
             .collect::<Vec<_>>();
         if SM::ZK {
-            polynomials.push(PolynomialInfo::new("mask_poly".to_string(), None, None));
+            polynomials.push(PolynomialInfo::new("mask_poly".into(), None, None));
         }
         polynomials.into_iter().map(|info| (info.label().into(), info)).collect()
     }
@@ -120,11 +121,11 @@ impl<F: PrimeField, SM: SNARKMode> AHPForR1CS<F, SM> {
         assert!(mask_poly.degree() <= 2 * variable_domain.size() + 2 * Self::zk_bound().unwrap() - 3);
 
         end_timer!(mask_poly_time);
-        LabeledPolynomial::new("mask_poly".to_string(), mask_poly, None, None)
+        LabeledPolynomial::new(SmolStr::new("mask_poly"), mask_poly, None, None)
     }
 
     fn calculate_w(
-        label: String,
+        label: SmolStr,
         private_variables: Vec<F>,
         x_poly: DensePolynomial<F>,
         variable_domain: EvaluationDomain<F>,

@@ -589,7 +589,7 @@ where
         let mut evaluations = std::collections::BTreeMap::new();
         for (label, (_, point)) in query_set.to_set() {
             if !AHPForR1CS::<E::Fr, SM>::LC_WITH_ZERO_EVAL.contains(&label.as_str()) {
-                let lc = lc_s.get(&label).ok_or_else(|| AHPError::MissingEval(label.to_string()))?;
+                let lc = lc_s.get(&label).ok_or_else(|| AHPError::MissingEval(label.to_owned()))?;
                 let evaluation = polynomials.get_lc_eval(lc, point)?;
                 evaluations.insert(label, evaluation);
             }

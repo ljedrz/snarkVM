@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use smol_str::SmolStr;
+
 /// Describes the failure modes of the AHP scheme.
 #[derive(Debug)]
 pub enum AHPError {
@@ -26,7 +28,7 @@ pub enum AHPError {
     /// The number of public inputs is incorrect.
     InvalidPublicInputLength,
     /// During verification, a required evaluation is missing
-    MissingEval(String),
+    MissingEval(SmolStr),
     /// Currently we only support square constraint matrices.
     NonSquareMatrix,
     /// During synthesis, our polynomials ended up being too high of degree

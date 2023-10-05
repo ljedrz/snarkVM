@@ -19,6 +19,7 @@ use snarkvm_fields::{ConstraintFieldError, Field, PrimeField, ToConstraintField}
 use snarkvm_utilities::{error, serialize::*, FromBytes, ToBytes};
 
 use hashbrown::HashMap;
+use smol_str::SmolStr;
 use std::{
     borrow::{Borrow, Cow},
     collections::{BTreeMap, BTreeSet},
@@ -396,7 +397,7 @@ impl<E: PairingEngine> BatchProof<E> {
 }
 
 /// Labels a `LabeledPolynomial` or a `LabeledCommitment`.
-pub type PolynomialLabel = String;
+pub type PolynomialLabel = SmolStr;
 
 /// A commitment along with information about its degree bound (if any).
 #[derive(Clone, Debug, CanonicalSerialize, PartialEq, Eq)]
@@ -430,7 +431,7 @@ impl<C: CanonicalSerialize> LabeledCommitment<C> {
     }
 
     pub fn new_with_info(info: &PolynomialInfo, commitment: C) -> Self {
-        Self { label: info.label().to_string(), commitment, degree_bound: info.degree_bound() }
+        Self { label: info.label().into(), commitment, degree_bound: info.degree_bound() }
     }
 
     /// Return the label for `self`.
@@ -455,7 +456,7 @@ pub enum LCTerm {
     /// The constant term representing `one`.
     One,
     /// Label for a polynomial.
-    PolyLabel(String),
+    PolyLabel(SmolStr),
 }
 
 impl fmt::Debug for LCTerm {
@@ -509,7 +510,7 @@ impl<'a> core::convert::TryInto<&'a PolynomialLabel> for &'a LCTerm {
     }
 }
 
-impl<B: Borrow<String>> PartialEq<B> for LCTerm {
+impl<B: Borrow<SmolStr>> PartialEq<B> for LCTerm {
     fn eq(&self, other: &B) -> bool {
         match self {
             Self::One => false,
@@ -522,7 +523,7 @@ impl<B: Borrow<String>> PartialEq<B> for LCTerm {
 #[derive(Clone, Debug)]
 pub struct LinearCombination<F> {
     /// The label.
-    pub label: String,
+    pub label: SmolStr,
     /// The linear combination of `(poly_label, coeff)` pairs.
     pub terms: BTreeMap<LCTerm, F>,
 }
@@ -530,13 +531,13 @@ pub struct LinearCombination<F> {
 #[allow(clippy::or_fun_call)]
 impl<F: Field> LinearCombination<F> {
     /// Construct an empty labeled linear combination.
-    pub fn empty(label: impl Into<String>) -> Self {
+    pub fn empty(label: impl Into<SmolStr>) -> Self {
         Self { label: label.into(), terms: BTreeMap::new() }
     }
 
     /// Construct a new labeled linear combination.
     /// with the terms specified in `term`.
-    pub fn new(label: impl Into<String>, _terms: impl IntoIterator<Item = (F, impl Into<LCTerm>)>) -> Self {
+    pub fn new(label: impl Into<SmolStr>, _terms: impl IntoIterator<Item = (F, impl Into<LCTerm>)>) -> Self {
         let mut terms = BTreeMap::new();
         for (c, l) in _terms.into_iter().map(|(c, t)| (c, t.into())) {
             *terms.entry(l).or_insert(F::zero()) += c;
@@ -546,7 +547,7 @@ impl<F: Field> LinearCombination<F> {
     }
 
     /// Returns the label of the linear combination.
-    pub fn label(&self) -> &str {
+    pub fn label(&self) -> &SmolStr {
         &self.label
     }
 
@@ -632,13 +633,13 @@ impl<F: Field> MulAssign<F> for LinearCombination<F> {
 /// that `p[label]` is to be queried at.
 ///
 /// Added the third field: the point name.
-pub type QuerySet<T> = BTreeSet<(String, (String, T))>;
+pub type QuerySet<T> = BTreeSet<(SmolStr, (SmolStr, T))>;
 
 /// `Evaluations` is the result of querying a set of labeled polynomials or equations
 /// `p` at a `QuerySet` `Q`. It maps each element of `Q` to the resulting evaluation.
 /// That is, if `(label, query)` is an element of `Q`, then `evaluation.get((label, query))`
 /// should equal `p[label].evaluate(query)`.
-pub type Evaluations<F> = BTreeMap<(String, F), F>;
+pub type Evaluations<F> = BTreeMap<(SmolStr, F), F>;
 
 /// Evaluate the given polynomials at `query_set`.
 pub fn evaluate_query_set<'a, F: PrimeField>(

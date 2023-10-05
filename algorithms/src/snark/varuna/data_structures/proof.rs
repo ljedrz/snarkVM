@@ -29,6 +29,7 @@ use snarkvm_utilities::{
     ToBytes,
 };
 
+use smol_str::SmolStr;
 use std::collections::BTreeMap;
 
 #[derive(Clone, Debug, PartialEq, Eq, CanonicalSerialize, CanonicalDeserialize)]
@@ -161,7 +162,7 @@ impl<F: PrimeField> Evaluations<F> {
 
 impl<F: PrimeField> Evaluations<F> {
     pub(crate) fn from_map(
-        map: &std::collections::BTreeMap<String, F>,
+        map: &std::collections::BTreeMap<SmolStr, F>,
         batch_sizes: BTreeMap<CircuitId, usize>,
     ) -> Self {
         let mut g_a_evals = Vec::with_capacity(batch_sizes.len());

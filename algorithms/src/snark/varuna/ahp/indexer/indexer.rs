@@ -111,10 +111,10 @@ impl<F: PrimeField, SM: SNARKMode> AHPForR1CS<F, SM> {
         ids.flat_map(move |id| {
             matrices.iter().flat_map(move |matrix| {
                 [
-                    format!("circuit_{id}_row_{matrix}"),
-                    format!("circuit_{id}_col_{matrix}"),
-                    format!("circuit_{id}_row_col_{matrix}"),
-                    format!("circuit_{id}_row_col_val_{matrix}"),
+                    format!("circuit_{id}_row_{matrix}").into(),
+                    format!("circuit_{id}_col_{matrix}").into(),
+                    format!("circuit_{id}_row_col_{matrix}").into(),
+                    format!("circuit_{id}_row_col_val_{matrix}").into(),
                 ]
             })
         })

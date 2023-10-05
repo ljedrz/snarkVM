@@ -16,6 +16,7 @@ use snarkvm_fields::PrimeField;
 
 use crate::snark::varuna::{witness_label, CircuitId, SNARKMode};
 use itertools::Itertools;
+use smol_str::SmolStr;
 use std::collections::BTreeMap;
 
 /// Randomizers used to combine circuit-specific and instance-specific elements in the AHP sumchecks
@@ -75,15 +76,15 @@ impl<F: PrimeField> FourthMessage<F> {
 pub struct QuerySet<F: PrimeField> {
     pub batch_sizes: BTreeMap<CircuitId, usize>,
 
-    pub rowcheck_zerocheck_query: (String, F),
+    pub rowcheck_zerocheck_query: (SmolStr, F),
 
-    pub g_1_query: (String, F),
-    pub lineval_sumcheck_query: (String, F),
+    pub g_1_query: (SmolStr, F),
+    pub lineval_sumcheck_query: (SmolStr, F),
 
-    pub g_a_query: (String, F),
-    pub g_b_query: (String, F),
-    pub g_c_query: (String, F),
-    pub matrix_sumcheck_query: (String, F),
+    pub g_a_query: (SmolStr, F),
+    pub g_b_query: (SmolStr, F),
+    pub g_c_query: (SmolStr, F),
+    pub matrix_sumcheck_query: (SmolStr, F),
 }
 
 impl<F: PrimeField> QuerySet<F> {
@@ -115,9 +116,9 @@ impl<F: PrimeField> QuerySet<F> {
     pub fn to_set(&self) -> crate::polycommit::sonic_pc::QuerySet<F> {
         let mut query_set = crate::polycommit::sonic_pc::QuerySet::new();
         for &circuit_id in self.batch_sizes.keys() {
-            query_set.insert((witness_label(circuit_id, "g_a", 0), self.g_a_query.clone()));
-            query_set.insert((witness_label(circuit_id, "g_b", 0), self.g_b_query.clone()));
-            query_set.insert((witness_label(circuit_id, "g_c", 0), self.g_c_query.clone()));
+            query_set.insert((witness_label(circuit_id, "g_a", 0).into(), self.g_a_query.clone()));
+            query_set.insert((witness_label(circuit_id, "g_b", 0).into(), self.g_b_query.clone()));
+            query_set.insert((witness_label(circuit_id, "g_c", 0).into(), self.g_c_query.clone()));
         }
         query_set.insert(("g_1".into(), self.g_1_query.clone()));
         query_set.insert(("rowcheck_zerocheck".into(), self.rowcheck_zerocheck_query.clone()));

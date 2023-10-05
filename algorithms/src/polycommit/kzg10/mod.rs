@@ -436,7 +436,7 @@ impl<E: PairingEngine> KZG10<E> {
                     poly_degree: p.degree(),
                     degree_bound: p.degree_bound().unwrap(),
                     max_degree,
-                    label: p.label().to_string(),
+                    label: p.label().into(),
                 });
             } else {
                 Ok(())

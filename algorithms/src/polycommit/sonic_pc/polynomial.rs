@@ -18,6 +18,7 @@ use snarkvm_fields::{Field, PrimeField};
 use snarkvm_utilities::{cfg_iter, cfg_iter_mut, CanonicalDeserialize, CanonicalSerialize};
 
 use hashbrown::HashMap;
+use smol_str::SmolStr;
 use std::borrow::Cow;
 
 #[cfg(feature = "serial")]
@@ -98,7 +99,7 @@ impl<F: Field> LabeledPolynomial<F> {
     }
 
     /// Return the label for `self`.
-    pub fn to_label(&self) -> String {
+    pub fn to_label(&self) -> SmolStr {
         self.info.label.clone()
     }
 

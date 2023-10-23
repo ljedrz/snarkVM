@@ -25,11 +25,15 @@ use snarkvm_curves::{
 use snarkvm_fields::{PrimeField, SquareRootField};
 use snarkvm_utilities::BigInteger;
 
-use core::{fmt::Debug, hash::Hash};
+use core::{
+    fmt::Debug,
+    hash::Hash,
+    panic::{RefUnwindSafe, UnwindSafe},
+};
 use zeroize::Zeroize;
 
 pub trait Environment:
-    'static + Copy + Clone + Debug + PartialEq + Eq + Hash + Serialize + DeserializeOwned + Send + Sync
+    'static + Copy + Clone + Debug + PartialEq + Eq + Hash + Serialize + DeserializeOwned + Send + Sync + RefUnwindSafe
 {
     type Affine: AffineCurve<
             Projective = Self::Projective,
@@ -38,10 +42,11 @@ pub trait Environment:
             Coordinates = (Self::Field, Self::Field),
         >;
     type BigInteger: BigInteger;
-    type Field: PrimeField<BigInteger = Self::BigInteger> + SquareRootField + Copy + Zeroize;
-    type PairingCurve: PairingEngine<Fr = Self::Field>;
-    type Projective: ProjectiveCurve<Affine = Self::Affine, BaseField = Self::Field, ScalarField = Self::Scalar>;
-    type Scalar: PrimeField<BigInteger = Self::BigInteger> + Copy + Zeroize;
+    type Field: PrimeField<BigInteger = Self::BigInteger> + SquareRootField + Copy + Zeroize + RefUnwindSafe;
+    type PairingCurve: PairingEngine<Fr = Self::Field> + RefUnwindSafe + UnwindSafe;
+    type Projective: ProjectiveCurve<Affine = Self::Affine, BaseField = Self::Field, ScalarField = Self::Scalar>
+        + RefUnwindSafe;
+    type Scalar: PrimeField<BigInteger = Self::BigInteger> + Copy + Zeroize + RefUnwindSafe;
 
     /// The coefficient `A` of the twisted Edwards curve.
     const EDWARDS_A: Self::Field;

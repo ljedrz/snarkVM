@@ -37,7 +37,12 @@ use snarkvm_fields::{
 };
 use snarkvm_utilities::bititerator::BitIteratorBE;
 
-use core::{fmt::Debug, hash::Hash, marker::PhantomData};
+use core::{
+    fmt::Debug,
+    hash::Hash,
+    marker::PhantomData,
+    panic::{RefUnwindSafe, UnwindSafe},
+};
 use serde::{Deserialize, Serialize};
 
 pub enum TwistType {
@@ -49,7 +54,7 @@ pub trait Bls12Parameters: 'static + Copy + Clone + Debug + PartialEq + Eq + Has
     const X: &'static [u64];
     const X_IS_NEGATIVE: bool;
     const TWIST_TYPE: TwistType;
-    type Fp: PrimeField + SquareRootField + Into<<Self::Fp as PrimeField>::BigInteger>;
+    type Fp: PrimeField + SquareRootField + Into<<Self::Fp as PrimeField>::BigInteger> + RefUnwindSafe + UnwindSafe;
     type Fp2Params: Fp2Parameters<Fp = Self::Fp>;
     type Fp6Params: Fp6Parameters<Fp2Params = Self::Fp2Params>;
     type Fp12Params: Fp12Parameters<Fp6Params = Self::Fp6Params>;

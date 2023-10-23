@@ -15,7 +15,7 @@
 use crate::traits::{AffineCurve, PairingCurve, ProjectiveCurve};
 use snarkvm_fields::{Field, PrimeField, SquareRootField, ToConstraintField};
 
-use core::{fmt::Debug, hash::Hash, iter};
+use core::{fmt::Debug, hash::Hash, iter, panic::UnwindSafe};
 
 pub trait PairingEngine: Sized + 'static + Copy + Debug + PartialEq + Eq + Hash + Sync + Send {
     /// This is the scalar field of the G1/G2 groups.
@@ -39,7 +39,8 @@ pub trait PairingEngine: Sized + 'static + Copy + Debug + PartialEq + Eq + Hash 
     type G2Affine: AffineCurve<BaseField = Self::Fqe, ScalarField = Self::Fr, Projective = Self::G2Projective>
         + PairingCurve<PairWith = Self::G1Affine, PairingResult = Self::Fqk>
         + From<Self::G2Projective>
-        + ToConstraintField<Self::Fq>;
+        + ToConstraintField<Self::Fq>
+        + UnwindSafe;
 
     /// The base field that hosts G1.
     type Fq: PrimeField + SquareRootField;

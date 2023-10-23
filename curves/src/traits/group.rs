@@ -21,6 +21,7 @@ use core::{
     hash::Hash,
     iter,
     ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub, SubAssign},
+    panic::{RefUnwindSafe, UnwindSafe},
 };
 use serde::{de::DeserializeOwned, Serialize};
 
@@ -137,6 +138,7 @@ pub trait AffineCurve:
     + ToBytes
     + From<<Self as AffineCurve>::Projective>
     + Zero
+    + RefUnwindSafe
 {
     type Projective: ProjectiveCurve<Affine = Self, ScalarField = Self::ScalarField> + From<Self> + Into<Self>;
     type BaseField: Field + SquareRootField;
@@ -240,7 +242,9 @@ pub trait PairingCurve: AffineCurve {
         + Send
         + Sync
         + Debug
-        + 'static;
+        + 'static
+        + RefUnwindSafe
+        + UnwindSafe;
     type PairWith: PairingCurve<PairWith = Self>;
     type PairingResult: Field;
 
@@ -254,7 +258,7 @@ pub trait PairingCurve: AffineCurve {
 }
 
 pub trait ModelParameters: 'static + Copy + Clone + Debug + PartialEq + Eq + Hash + Send + Sync + Sized {
-    type BaseField: Field + SquareRootField;
+    type BaseField: Field + SquareRootField + RefUnwindSafe;
     type ScalarField: PrimeField + SquareRootField + Into<<Self::ScalarField as PrimeField>::BigInteger>;
 }
 

@@ -224,9 +224,8 @@ fn finalize_transition<N: Network, P: FinalizeStorage<N>>(
             // Finalize the command.
             match &command {
                 Command::BranchEq(branch_eq) => {
-                    let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-                        branch_to(counter, branch_eq, finalize, stack, &registers)
-                    }));
+                    let result =
+                        std::panic::catch_unwind(|| branch_to(counter, branch_eq, finalize, stack, &registers));
                     match result {
                         Ok(Ok(new_counter)) => {
                             counter = new_counter;
@@ -238,9 +237,8 @@ fn finalize_transition<N: Network, P: FinalizeStorage<N>>(
                     }
                 }
                 Command::BranchNeq(branch_neq) => {
-                    let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-                        branch_to(counter, branch_neq, finalize, stack, &registers)
-                    }));
+                    let result =
+                        std::panic::catch_unwind(|| branch_to(counter, branch_neq, finalize, stack, &registers));
                     match result {
                         Ok(Ok(new_counter)) => {
                             counter = new_counter;
@@ -276,10 +274,10 @@ fn finalize_transition<N: Network, P: FinalizeStorage<N>>(
                         None => bail!("Transition ID '{transition_id}' not found in call graph"),
                     };
 
-                    let callee_state = match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                    let callee_state = match std::panic::catch_unwind(|| {
                         // Set up the finalize state for the await.
                         setup_await(state, await_, stack, &registers, child_transition_id)
-                    })) {
+                    }) {
                         Ok(Ok(callee_state)) => callee_state,
                         // If the evaluation fails, bail and return the error.
                         Ok(Err(error)) => bail!("'finalize' failed to evaluate command ({command}): {error}"),

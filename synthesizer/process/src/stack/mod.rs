@@ -68,7 +68,7 @@ use synthesizer_snark::{Certificate, ProvingKey, UniversalSRS, VerifyingKey};
 use aleo_std::prelude::{finish, lap, timer};
 use indexmap::IndexMap;
 use parking_lot::RwLock;
-use std::sync::Arc;
+use std::sync::{Arc, RwLock as SRWLock};
 
 #[cfg(not(feature = "serial"))]
 use rayon::prelude::*;
@@ -177,9 +177,9 @@ pub struct Stack<N: Network> {
     /// The universal SRS.
     universal_srs: Arc<UniversalSRS<N>>,
     /// The mapping of function name to proving key.
-    proving_keys: Arc<RwLock<IndexMap<Identifier<N>, ProvingKey<N>>>>,
+    proving_keys: Arc<SRWLock<IndexMap<Identifier<N>, ProvingKey<N>>>>,
     /// The mapping of function name to verifying key.
-    verifying_keys: Arc<RwLock<IndexMap<Identifier<N>, VerifyingKey<N>>>>,
+    verifying_keys: Arc<SRWLock<IndexMap<Identifier<N>, VerifyingKey<N>>>>,
 }
 
 impl<N: Network> Stack<N> {
@@ -314,13 +314,13 @@ impl<N: Network> Stack<N> {
     /// Returns `true` if the proving key for the given function name exists.
     #[inline]
     pub fn contains_proving_key(&self, function_name: &Identifier<N>) -> bool {
-        self.proving_keys.read().contains_key(function_name)
+        self.proving_keys.read().unwrap().contains_key(function_name)
     }
 
     /// Returns `true` if the verifying key for the given function name exists.
     #[inline]
     pub fn contains_verifying_key(&self, function_name: &Identifier<N>) -> bool {
-        self.verifying_keys.read().contains_key(function_name)
+        self.verifying_keys.read().unwrap().contains_key(function_name)
     }
 
     /// Returns the proving key for the given function name.
@@ -329,7 +329,7 @@ impl<N: Network> Stack<N> {
         // If the program is 'credits.aleo', try to load the proving key, if it does not exist.
         self.try_insert_credits_function_proving_key(function_name)?;
         // Return the proving key, if it exists.
-        match self.proving_keys.read().get(function_name) {
+        match self.proving_keys.read().unwrap().get(function_name) {
             Some(proving_key) => Ok(proving_key.clone()),
             None => bail!("Proving key not found for: {}/{function_name}", self.program.id()),
         }
@@ -339,7 +339,7 @@ impl<N: Network> Stack<N> {
     #[inline]
     pub fn get_verifying_key(&self, function_name: &Identifier<N>) -> Result<VerifyingKey<N>> {
         // Return the verifying key, if it exists.
-        match self.verifying_keys.read().get(function_name) {
+        match self.verifying_keys.read().unwrap().get(function_name) {
             Some(verifying_key) => Ok(verifying_key.clone()),
             None => bail!("Verifying key not found for: {}/{function_name}", self.program.id()),
         }
@@ -355,7 +355,7 @@ impl<N: Network> Stack<N> {
             self.program.id()
         );
         // Insert the proving key.
-        self.proving_keys.write().insert(*function_name, proving_key);
+        self.proving_keys.write().unwrap().insert(*function_name, proving_key);
         Ok(())
     }
 
@@ -369,20 +369,20 @@ impl<N: Network> Stack<N> {
             self.program.id()
         );
         // Insert the verifying key.
-        self.verifying_keys.write().insert(*function_name, verifying_key);
+        self.verifying_keys.write().unwrap().insert(*function_name, verifying_key);
         Ok(())
     }
 
     /// Removes the proving key for the given function name.
     #[inline]
     pub fn remove_proving_key(&self, function_name: &Identifier<N>) {
-        self.proving_keys.write().remove(function_name);
+        self.proving_keys.write().unwrap().remove(function_name);
     }
 
     /// Removes the verifying key for the given function name.
     #[inline]
     pub fn remove_verifying_key(&self, function_name: &Identifier<N>) {
-        self.verifying_keys.write().remove(function_name);
+        self.verifying_keys.write().unwrap().remove(function_name);
     }
 }
 
@@ -391,7 +391,7 @@ impl<N: Network> Stack<N> {
     fn try_insert_credits_function_proving_key(&self, function_name: &Identifier<N>) -> Result<()> {
         // If the program is 'credits.aleo' and it does not exist yet, load the proving key directly.
         if self.program_id() == &ProgramID::from_str("credits.aleo")?
-            && !self.proving_keys.read().contains_key(function_name)
+            && !self.proving_keys.read().unwrap().contains_key(function_name)
         {
             // Load the 'credits.aleo' function proving key.
             let proving_key = N::get_credits_proving_key(function_name.to_string())?;

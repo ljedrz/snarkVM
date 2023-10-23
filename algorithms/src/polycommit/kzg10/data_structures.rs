@@ -31,9 +31,13 @@ use snarkvm_utilities::{
 use crate::srs::{UniversalProver, UniversalVerifier};
 use anyhow::Result;
 use core::ops::{Add, AddAssign};
-use parking_lot::RwLock;
 use rand_core::RngCore;
-use std::{collections::BTreeMap, io, ops::Range, sync::Arc};
+use std::{
+    collections::BTreeMap,
+    io,
+    ops::Range,
+    sync::{Arc, RwLock},
+};
 
 /// `UniversalParams` are the universal parameters for the KZG10 scheme.
 #[derive(Clone, Debug)]
@@ -56,13 +60,13 @@ impl<E: PairingEngine> UniversalParams<E> {
         let powers = Arc::new(RwLock::new(PowersOfG::<E>::load()?));
         let h = E::G2Affine::prime_subgroup_generator();
         let prepared_h = h.prepare();
-        let prepared_beta_h = powers.read().beta_h().prepare();
+        let prepared_beta_h = powers.read().unwrap().beta_h().prepare();
 
         Ok(Self { powers, h, prepared_h, prepared_beta_h })
     }
 
     pub fn download_powers_for(&self, range: Range<usize>) -> Result<()> {
-        self.powers.write().download_powers_for(range)
+        self.powers.write().unwrap().download_powers_for(range)
     }
 
     pub fn lagrange_basis(&self, domain: EvaluationDomain<E::Fr>) -> Result<Vec<E::G1Affine>> {
@@ -72,23 +76,23 @@ impl<E: PairingEngine> UniversalParams<E> {
     }
 
     pub fn power_of_beta_g(&self, index: usize) -> Result<E::G1Affine> {
-        self.powers.write().power_of_beta_g(index)
+        self.powers.write().unwrap().power_of_beta_g(index)
     }
 
     pub fn powers_of_beta_g(&self, lower: usize, upper: usize) -> Result<Vec<E::G1Affine>> {
-        Ok(self.powers.write().powers_of_beta_g(lower..upper)?.to_vec())
+        Ok(self.powers.write().unwrap().powers_of_beta_g(lower..upper)?.to_vec())
     }
 
     pub fn powers_of_beta_times_gamma_g(&self) -> Arc<BTreeMap<usize, E::G1Affine>> {
-        self.powers.read().powers_of_beta_gamma_g()
+        self.powers.read().unwrap().powers_of_beta_gamma_g()
     }
 
     pub fn beta_h(&self) -> E::G2Affine {
-        self.powers.read().beta_h()
+        self.powers.read().unwrap().beta_h()
     }
 
     pub fn max_degree(&self) -> usize {
-        self.powers.read().max_num_powers() - 1
+        self.powers.read().unwrap().max_num_powers() - 1
     }
 
     pub fn to_universal_prover(&self) -> Result<UniversalProver<E>> {
@@ -105,7 +109,7 @@ impl<E: PairingEngine> UniversalParams<E> {
 
         Ok(UniversalVerifier {
             vk: VerifierKey::<E> { g, gamma_g, h, beta_h, prepared_h, prepared_beta_h },
-            prepared_negative_powers_of_beta_h: self.powers.read().prepared_negative_powers_of_beta_h(),
+            prepared_negative_powers_of_beta_h: self.powers.read().unwrap().prepared_negative_powers_of_beta_h(),
         })
     }
 }
@@ -131,7 +135,7 @@ impl<E: PairingEngine> FromBytes for UniversalParams<E> {
 impl<E: PairingEngine> ToBytes for UniversalParams<E> {
     fn write_le<W: Write>(&self, mut writer: W) -> io::Result<()> {
         // Serialize powers.
-        self.powers.read().write_le(&mut writer)?;
+        self.powers.read().unwrap().write_le(&mut writer)?;
 
         // Serialize `h`.
         self.h.write_le(&mut writer)?;

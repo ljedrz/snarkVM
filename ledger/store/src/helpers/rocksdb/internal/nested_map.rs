@@ -350,6 +350,24 @@ impl<
     type Values = NestedValues<'a, V>;
 
     ///
+    /// Returns the number of confirmed entries in the map.
+    ///
+    fn len_map_confirmed(&self, map: &M) -> Result<usize> {
+        Ok(self.database.prefix_iterator(&self.create_prefixed_map(map)?).count())
+    }
+
+    ///
+    /// Returns the number of pending entries in the map.
+    ///
+    fn len_map_pending(&self, map: &M) -> usize {
+        if self.is_atomic_in_progress() {
+            self.atomic_batch.lock().iter().filter(|(m, _, _)| m == map).count()
+        } else {
+            0
+        }
+    }
+
+    ///
     /// Returns `true` if the given map and key exists.
     ///
     fn contains_key_confirmed(&self, map: &M, key: &K) -> Result<bool> {

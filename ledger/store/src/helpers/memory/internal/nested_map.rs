@@ -264,6 +264,23 @@ impl<
     type Values = core::iter::Map<btree_map::IntoValues<Vec<u8>, V>, fn(V) -> Cow<'a, V>>;
 
     ///
+    /// Returns the number of confirmed entries in the map.
+    ///
+    fn len_map_confirmed(&self, map: &M) -> Result<usize> {
+        // Serialize 'm'.
+        let m = bincode::serialize(map)?;
+        // Retrieve the keys for the serialized map.
+        Ok(self.map.read().get(&m).map(|keys| keys.len()).unwrap_or_default())
+    }
+
+    ///
+    /// Returns the number of pending entries in the map.
+    ///
+    fn len_map_pending(&self, map: &M) -> usize {
+        self.atomic_batch.lock().iter().filter(|(m, _, _)| m == map).count()
+    }
+
+    ///
     /// Returns `true` if the given key exists in the map.
     ///
     fn contains_key_confirmed(&self, map: &M, key: &K) -> Result<bool> {

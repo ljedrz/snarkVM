@@ -19,7 +19,7 @@ use crate::helpers::{Map, MapRead};
 
 use core::{fmt, fmt::Debug, hash::Hash, mem};
 use indexmap::IndexMap;
-use std::{borrow::Cow, ops::Deref, sync::atomic::Ordering};
+use std::{borrow::Cow, collections::HashSet, ops::Deref, sync::atomic::Ordering};
 use tracing::error;
 
 #[derive(Clone)]
@@ -242,6 +242,21 @@ impl<
     type PendingIterator =
         core::iter::Map<indexmap::map::IntoIter<K, Option<V>>, fn((K, Option<V>)) -> (Cow<'a, K>, Option<Cow<'a, V>>)>;
     type Values = Values<'a, V>;
+
+    ///
+    /// Returns the number of confirmed entries in the map.
+    ///
+    fn len_confirmed(&self) -> usize {
+        self.database.prefix_iterator(&self.context).count()
+    }
+
+    ///
+    /// Returns the number of pending entries in the map.
+    ///
+    fn len_pending(&self) -> usize {
+        let filtered_atomic_batch: HashSet<_> = self.atomic_batch.lock().clone().into_iter().map(|(k, _)| k).collect();
+        filtered_atomic_batch.len()
+    }
 
     ///
     /// Returns `true` if the given key exists in the map.
@@ -1387,9 +1402,13 @@ mod tests {
 
         // Ensure that all the items are present.
         assert_eq!(test_storage.own_map.iter_confirmed().count(), 1);
+        assert_eq!(test_storage.own_map.len_confirmed(), 1);
         assert_eq!(test_storage.extra_maps.own_map1.iter_confirmed().count(), 1);
+        assert_eq!(test_storage.extra_maps.own_map1.len_confirmed(), 1);
         assert_eq!(test_storage.extra_maps.own_map2.iter_confirmed().count(), 1);
+        assert_eq!(test_storage.extra_maps.own_map2.len_confirmed(), 1);
         assert_eq!(test_storage.extra_maps.extra_maps.own_map.iter_confirmed().count(), 1);
+        assert_eq!(test_storage.extra_maps.extra_maps.own_map.len_confirmed(), 1);
 
         // The atomic_write_batch macro uses ?, so the test returns a Result for simplicity.
         Ok(())

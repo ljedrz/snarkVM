@@ -22,7 +22,7 @@ use core::{borrow::Borrow, hash::Hash};
 use parking_lot::{Mutex, RwLock};
 use std::{
     borrow::Cow,
-    collections::{btree_map, BTreeMap},
+    collections::{btree_map, BTreeMap, HashSet},
     sync::{
         atomic::{AtomicBool, Ordering},
         Arc,
@@ -241,6 +241,21 @@ impl<
     type PendingIterator =
         core::iter::Map<indexmap::map::IntoIter<K, Option<V>>, fn((K, Option<V>)) -> (Cow<'a, K>, Option<Cow<'a, V>>)>;
     type Values = core::iter::Map<btree_map::IntoValues<Vec<u8>, V>, fn(V) -> Cow<'a, V>>;
+
+    ///
+    /// Returns the number of confirmed entries in the map.
+    ///
+    fn len_confirmed(&self) -> usize {
+        self.map.read().len()
+    }
+
+    ///
+    /// Returns the number of pending entries in the map.
+    ///
+    fn len_pending(&self) -> usize {
+        let filtered_atomic_batch: HashSet<_> = self.atomic_batch.lock().clone().into_iter().map(|(k, _)| k).collect();
+        filtered_atomic_batch.len()
+    }
 
     ///
     /// Returns `true` if the given key exists in the map.

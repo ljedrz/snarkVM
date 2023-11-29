@@ -30,8 +30,13 @@ pub fn check_insert_and_get_speculative(map: impl for<'a> Map<'a, usize, String>
 
     // Check that the item is not yet in the map.
     assert!(map.get_confirmed(&0).unwrap().is_none());
+    // Check that the map has no entries.
+    assert_eq!(map.len_confirmed(), 0);
+    assert!(map.is_empty_confirmed());
     // Check that the item is in the batch.
     assert_eq!(map.get_pending(&0), Some(Some("0".to_string())));
+    assert_eq!(map.len_pending(), 1);
+    assert!(!map.is_empty_pending());
     // Check that the item can be speculatively retrieved.
     assert_eq!(map.get_speculative(&0).unwrap(), Some(Cow::Owned("0".to_string())));
 
@@ -50,14 +55,24 @@ pub fn check_insert_and_get_speculative(map: impl for<'a> Map<'a, usize, String>
 
     // The map should still contain no items.
     assert!(map.iter_confirmed().next().is_none());
+    assert_eq!(map.len_confirmed(), 0);
+    assert!(map.is_empty_confirmed());
+
+    // Though it should be aware of the pending ones.
+    assert_eq!(map.len_pending(), 1);
+    assert!(!map.is_empty_pending());
 
     // Finish the current atomic write batch.
     map.finish_atomic().unwrap();
 
     // Check that the item is present in the map now.
     assert_eq!(map.get_confirmed(&0).unwrap(), Some(Cow::Owned("9".to_string())));
+    assert_eq!(map.len_confirmed(), 1);
+    assert!(!map.is_empty_confirmed());
     // Check that the item is not in the batch.
     assert_eq!(map.get_pending(&0), None);
+    assert_eq!(map.len_pending(), 0);
+    assert!(map.is_empty_pending());
     // Check that the item can be speculatively retrieved.
     assert_eq!(map.get_speculative(&0).unwrap(), Some(Cow::Owned("9".to_string())));
 }

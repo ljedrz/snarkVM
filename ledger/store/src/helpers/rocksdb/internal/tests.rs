@@ -59,6 +59,43 @@ fn test_insert_and_contains_key() {
 
 #[test]
 #[serial]
+fn test_len_perf() {
+    let map =
+        RocksDB::open_map_testing(temp_dir(), None, MapID::Test(TestMapID::Test)).expect("Failed to open data map");
+
+    for i in 0u32..1_000_000 {
+        map.insert(i, i.to_string()).expect("Failed to insert");
+    }
+    println!("1M inserted");
+
+    let now = std::time::Instant::now();
+    let map_len = map.len_confirmed();
+    assert_eq!(map_len, 1_000_000);
+    println!("1M: {:?}", now.elapsed());
+
+    for i in 1_000_000..10_000_000 {
+        map.insert(i, i.to_string()).expect("Failed to insert");
+    }
+    println!("10M inserted");
+
+    let now = std::time::Instant::now();
+    let map_len = map.len_confirmed();
+    assert_eq!(map_len, 10_000_000);
+    println!("10M: {:?}", now.elapsed());
+
+    for i in 10_000_000..100_000_000 {
+        map.insert(i, i.to_string()).expect("Failed to insert");
+    }
+    println!("100M inserted");
+
+    let now = std::time::Instant::now();
+    let map_len = map.len_confirmed();
+    assert_eq!(map_len, 100_000_000);
+    println!("100M: {:?}", now.elapsed());
+}
+
+#[test]
+#[serial]
 fn test_insert_and_get() {
     let map =
         RocksDB::open_map_testing(temp_dir(), None, MapID::Test(TestMapID::Test)).expect("Failed to open data map");

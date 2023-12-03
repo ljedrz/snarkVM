@@ -247,7 +247,21 @@ impl<
     /// Returns the number of confirmed entries in the map.
     ///
     fn len_confirmed(&self) -> usize {
-        self.database.prefix_iterator(&self.context).count()
+        let mut c = 0usize;
+        let mut iter = self.database.raw_iterator();
+
+        iter.seek(&self.context);
+        while let Some(key) = iter.key() {
+            if !key.starts_with(&self.context) {
+                break;
+            }
+
+            c += 1;
+
+            iter.next();
+        }
+
+        c
     }
 
     ///

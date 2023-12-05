@@ -271,10 +271,10 @@ impl<E: PairingEngine> CommitterKey<E> {
 }
 
 /// `CommitterUnionKey` is a union of `CommitterKey`s, useful for multi-circuit batch proofs.
-#[derive(Clone, Debug, Hash, PartialEq, Eq)]
+#[derive(Clone, Debug)]
 pub struct CommitterUnionKey<'a, E: PairingEngine> {
     /// The key used to commit to polynomials.
-    pub powers_of_beta_g: Option<&'a Vec<E::G1Affine>>,
+    pub powers_of_beta_g: Option<Vec<E::G1Affine>>,
 
     /// The key used to commit to polynomials in Lagrange basis.
     pub lagrange_bases_at_beta_g: BTreeMap<usize, &'a Vec<E::G1Affine>>,
@@ -284,7 +284,7 @@ pub struct CommitterUnionKey<'a, E: PairingEngine> {
 
     /// The powers used to commit to shifted polynomials.
     /// This is `None` if `self` does not support enforcing any degree bounds.
-    pub shifted_powers_of_beta_g: Option<&'a Vec<E::G1Affine>>,
+    pub shifted_powers_of_beta_g: Option<Vec<E::G1Affine>>,
 
     /// The powers used to commit to shifted hiding polynomials.
     /// This is `None` if `self` does not support enforcing any degree bounds.
@@ -339,7 +339,7 @@ impl<'a, E: PairingEngine> CommitterUnionKey<'a, E> {
         })
     }
 
-    pub fn union<T: IntoIterator<Item = &'a CommitterKey<E>>>(committer_keys: T) -> Self {
+    pub fn union<T: IntoIterator<Item = &'a CommitterKey<E>>>(committer_keys: T, pp: &'a UniversalParams<E>) -> Self {
         let mut ck_union = CommitterUnionKey::<E> {
             powers_of_beta_g: None,
             lagrange_bases_at_beta_g: BTreeMap::new(),
@@ -370,9 +370,9 @@ impl<'a, E: PairingEngine> CommitterUnionKey<'a, E> {
         }
 
         let biggest_ck = biggest_ck.unwrap();
-        ck_union.powers_of_beta_g = Some(&biggest_ck.powers_of_beta_g);
+        ck_union.powers_of_beta_g = Some(pp.all_powers_of_beta_g());
         ck_union.powers_of_beta_times_gamma_g = Some(&biggest_ck.powers_of_beta_times_gamma_g);
-        ck_union.shifted_powers_of_beta_g = biggest_ck.shifted_powers_of_beta_g.as_ref();
+        ck_union.shifted_powers_of_beta_g = Some(pp.all_shifted_powers_of_beta_g());
 
         if !enforced_degree_bounds.is_empty() {
             enforced_degree_bounds.sort();

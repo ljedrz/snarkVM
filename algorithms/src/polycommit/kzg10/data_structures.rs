@@ -79,6 +79,14 @@ impl<E: PairingEngine> UniversalParams<E> {
         Ok(self.powers.write().powers_of_beta_g(lower..upper)?.to_vec())
     }
 
+    pub fn all_powers_of_beta_g(&self) -> Vec<E::G1Affine> {
+        self.powers.read().all_powers_of_beta_g()
+    }
+
+    pub fn all_shifted_powers_of_beta_g(&self) -> Vec<E::G1Affine> {
+        self.powers.read().all_shifted_powers_of_beta_g()
+    }
+
     pub fn powers_of_beta_times_gamma_g(&self) -> Arc<BTreeMap<usize, E::G1Affine>> {
         self.powers.read().powers_of_beta_gamma_g()
     }

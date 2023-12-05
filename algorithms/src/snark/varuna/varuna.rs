@@ -98,7 +98,7 @@ impl<E: PairingEngine, FS: AlgebraicSponge<E::Fq, 2>, SM: SNARKMode> VarunaSNARK
                 Some(coefficient_support.as_slice()),
             )?;
 
-            let ck = CommitterUnionKey::union(std::iter::once(&committer_key));
+            let ck = CommitterUnionKey::union(std::iter::once(&committer_key), universal_srs);
 
             let commit_time = start_timer!(|| format!("Commit to index polynomials for {}", indexed_circuit.id));
             let setup_rng = None::<&mut dyn RngCore>; // We do not randomize the commitments

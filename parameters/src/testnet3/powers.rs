@@ -145,6 +145,16 @@ impl<E: PairingEngine> PowersOfG<E> {
     pub fn beta_h(&self) -> E::G2Affine {
         self.beta_h
     }
+
+    /// TODO
+    pub fn all_powers_of_beta_g(&self) -> Vec<E::G1Affine> {
+        self.powers_of_beta_g.powers_of_beta_g.clone()
+    }
+
+    /// TODO
+    pub fn all_shifted_powers_of_beta_g(&self) -> Vec<E::G1Affine> {
+        self.powers_of_beta_g.shifted_powers_of_beta_g.clone()
+    }
 }
 
 impl<E: PairingEngine> CanonicalSerialize for PowersOfG<E> {

@@ -135,6 +135,11 @@ impl Database for RocksDB {
                 let prefix_extractor = rocksdb::SliceTransform::create_fixed_prefix(PREFIX_LEN);
                 options.set_prefix_extractor(prefix_extractor);
 
+                // Set up and apply block-related options.
+                let mut block_options = rocksdb::BlockBasedOptions::default();
+                block_options.set_block_size(16 * 1024);
+                options.set_block_based_table_factory(&block_options);
+
                 let primary = aleo_std_storage::aleo_ledger_dir(network_id, storage.clone().into());
                 let rocksdb = {
                     options.increase_parallelism(2);

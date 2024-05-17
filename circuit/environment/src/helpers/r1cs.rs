@@ -13,7 +13,7 @@
 // limitations under the License.
 
 use crate::{
-    helpers::{Constraint, Counter},
+    helpers::{Constraint, Counter, InnerVariable},
     prelude::*,
 };
 use snarkvm_fields::PrimeField;
@@ -38,7 +38,7 @@ impl<F: PrimeField> R1CS<F> {
     pub(crate) fn new() -> Self {
         Self {
             constants: Default::default(),
-            public: vec![Variable::Public(Rc::new((0u64, F::one())))],
+            public: vec![Variable::from(InnerVariable::Public(0u64, F::one()))],
             private: Default::default(),
             constraints: Default::default(),
             counter: Default::default(),
@@ -59,7 +59,7 @@ impl<F: PrimeField> R1CS<F> {
 
     /// Returns a new constant with the given value and scope.
     pub(crate) fn new_constant(&mut self, value: F) -> Variable<F> {
-        let variable = Variable::Constant(Rc::new(value));
+        let variable = Variable::from(InnerVariable::Constant(value));
         self.constants.push(variable.clone());
         self.counter.increment_constant();
         self.num_variables += 1;
@@ -68,7 +68,7 @@ impl<F: PrimeField> R1CS<F> {
 
     /// Returns a new public variable with the given value and scope.
     pub(crate) fn new_public(&mut self, value: F) -> Variable<F> {
-        let variable = Variable::Public(Rc::new((self.public.len() as u64, value)));
+        let variable = Variable::from(InnerVariable::Public(self.public.len() as u64, value));
         self.public.push(variable.clone());
         self.counter.increment_public();
         self.num_variables += 1;
@@ -77,7 +77,7 @@ impl<F: PrimeField> R1CS<F> {
 
     /// Returns a new private variable with the given value and scope.
     pub(crate) fn new_private(&mut self, value: F) -> Variable<F> {
-        let variable = Variable::Private(Rc::new((self.private.len() as u64, value)));
+        let variable = Variable::from(InnerVariable::Private(self.private.len() as u64, value));
         self.private.push(variable.clone());
         self.counter.increment_private();
         self.num_variables += 1;
@@ -114,14 +114,12 @@ impl<F: PrimeField> R1CS<F> {
         self.constraints.iter().all(|constraint| {
             let (a, b, c) = constraint.to_terms();
             [a, b, c].into_iter().all(|lc| {
-                lc.to_terms().iter().all(|(variable, _)| match variable {
-                    Variable::Constant(_value) => false, // terms should not contain Constants
-                    Variable::Private(private) => {
-                        let (index, value) = private.as_ref();
+                lc.to_terms().iter().all(|(variable, _)| match variable.deref() {
+                    InnerVariable::Constant(_value) => false, // terms should not contain Constants
+                    InnerVariable::Private(index, value) => {
                         self.private.get(*index as usize).map_or_else(|| false, |v| v.value() == *value)
                     }
-                    Variable::Public(public) => {
-                        let (index, value) = public.as_ref();
+                    InnerVariable::Public(index, value) => {
                         self.public.get(*index as usize).map_or_else(|| false, |v| v.value() == *value)
                     }
                 })

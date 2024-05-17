@@ -12,11 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::{Circuit, LinearCombination, TestnetCircuit, Variable, R1CS};
+use crate::{Circuit, InnerVariable, LinearCombination, TestnetCircuit, R1CS};
 use snarkvm_curves::edwards_bls12::Fq;
 use snarkvm_fields::PrimeField;
 
 use indexmap::IndexMap;
+use std::ops::Deref;
 
 /// A struct for tracking the mapping of variables from the virtual machine (first) to the gadget constraint system (second).
 struct Converter {
@@ -63,10 +64,8 @@ impl<F: PrimeField> R1CS<F> {
         // Allocate the public variables.
         // NOTE: we skip the first public `One` variable because we already allocated it in the `ConstraintSystem` constructor.
         for (i, public) in self.to_public_variables().iter().skip(1).enumerate() {
-            match public {
-                Variable::Public(index_value) => {
-                    let (index, value) = index_value.as_ref();
-
+            match public.deref() {
+                InnerVariable::Public(index, value) => {
                     assert_eq!(
                         (i + 1) as u64,
                         *index,
@@ -91,10 +90,8 @@ impl<F: PrimeField> R1CS<F> {
 
         // Allocate the private variables.
         for (i, private) in self.to_private_variables().iter().enumerate() {
-            match private {
-                Variable::Private(index_value) => {
-                    let (index, value) = index_value.as_ref();
-
+            match private.deref() {
+                InnerVariable::Private(index, value) => {
                     assert_eq!(
                         i as u64, *index,
                         "Private variables in first system must be processed in lexicographic order"
@@ -126,14 +123,13 @@ impl<F: PrimeField> R1CS<F> {
 
                     // Process every term in the linear combination.
                     for (variable, coefficient) in lc.to_terms() {
-                        match variable {
-                            Variable::Constant(_) => {
+                        match variable.deref() {
+                            InnerVariable::Constant(_) => {
                                 unreachable!(
                                     "Failed during constraint translation. The first system by definition cannot have constant variables in the terms"
                                 )
                             }
-                            Variable::Public(index_value) => {
-                                let (index, _value) = index_value.as_ref();
+                            InnerVariable::Public(index, _value) => {
                                 let gadget = converter.public.get(index).unwrap();
                                 assert_eq!(
                                     snarkvm_algorithms::r1cs::Index::Public((index + 1) as usize),
@@ -142,8 +138,7 @@ impl<F: PrimeField> R1CS<F> {
                                 );
                                 linear_combination += (*coefficient, *gadget);
                             }
-                            Variable::Private(index_value) => {
-                                let (index, _value) = index_value.as_ref();
+                            InnerVariable::Private(index, _value) => {
                                 let gadget = converter.private.get(index).unwrap();
                                 assert_eq!(
                                     snarkvm_algorithms::r1cs::Index::Private(*index as usize),

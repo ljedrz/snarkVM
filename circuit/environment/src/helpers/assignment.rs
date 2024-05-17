@@ -16,7 +16,7 @@ use crate::Index;
 use snarkvm_fields::PrimeField;
 
 use indexmap::IndexMap;
-use std::sync::Arc;
+use std::{ops::Deref, sync::Arc};
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum AssignmentVariable<F: PrimeField> {
@@ -28,16 +28,10 @@ pub enum AssignmentVariable<F: PrimeField> {
 impl<F: PrimeField> From<&crate::Variable<F>> for AssignmentVariable<F> {
     /// Converts a variable to an assignment variable.
     fn from(variable: &crate::Variable<F>) -> Self {
-        match variable {
-            crate::Variable::Constant(value) => Self::Constant(**value),
-            crate::Variable::Public(index_value) => {
-                let (index, _value) = index_value.as_ref();
-                Self::Public(*index)
-            }
-            crate::Variable::Private(index_value) => {
-                let (index, _value) = index_value.as_ref();
-                Self::Private(*index)
-            }
+        match variable.deref() {
+            crate::InnerVariable::Constant(value) => Self::Constant(*value),
+            crate::InnerVariable::Public(index, _value) => Self::Public(*index),
+            crate::InnerVariable::Private(index, _value) => Self::Private(*index),
         }
     }
 }

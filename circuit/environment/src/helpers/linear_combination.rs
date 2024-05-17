@@ -17,7 +17,7 @@ use snarkvm_fields::PrimeField;
 
 use core::{
     fmt,
-    ops::{Add, AddAssign, Mul, Neg, Sub},
+    ops::{Add, AddAssign, Deref, Mul, Neg, Sub},
 };
 
 // Before high level program operations are converted into constraints, they are first tracked as linear combinations.
@@ -60,8 +60,8 @@ impl<F: PrimeField> LinearCombination<F> {
     pub fn is_public(&self) -> bool {
         self.constant.is_zero()
             && self.terms.len() == 1
-            && match self.terms.first() {
-                Some((Variable::Public(..), coefficient)) => *coefficient == F::one(),
+            && match self.terms.first().map(|(var, coeff)| (var.deref(), coeff)) {
+                Some((InnerVariable::Public(..), coefficient)) => *coefficient == F::one(),
                 _ => false,
             }
     }
@@ -489,8 +489,6 @@ mod tests {
     use super::*;
     use snarkvm_fields::{One as O, Zero as Z};
 
-    use std::rc::Rc;
-
     #[test]
     fn test_zero() {
         let zero = <Circuit as Environment>::BaseField::zero();
@@ -545,7 +543,7 @@ mod tests {
         let two = one + one;
         let four = two + two;
 
-        let start = LinearCombination::from(Variable::Public(Rc::new((1, one))));
+        let start = LinearCombination::from(Variable::from(InnerVariable::Public(1, one)));
         assert!(!start.is_constant());
         assert_eq!(one, start.value());
 

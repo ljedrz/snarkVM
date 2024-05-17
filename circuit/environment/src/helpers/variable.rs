@@ -18,20 +18,38 @@ use snarkvm_fields::traits::*;
 use core::{
     cmp::Ordering,
     fmt,
-    ops::{Add, Sub},
+    ops::{Add, Deref, Sub},
 };
 use std::rc::Rc;
 
 pub type Index = u64;
 
 #[derive(Clone, PartialEq, Eq, Hash)]
-pub enum Variable<F: PrimeField> {
-    Constant(Rc<F>),
-    Public(Rc<(Index, F)>),
-    Private(Rc<(Index, F)>),
+pub enum InnerVariable<F: PrimeField> {
+    Constant(F),
+    Public(Index, F),
+    Private(Index, F),
 }
 
-impl<F: PrimeField> Variable<F> {
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct Variable<F: PrimeField>(Rc<InnerVariable<F>>);
+
+impl<F: PrimeField> From<InnerVariable<F>> for Variable<F> {
+    fn from(value: InnerVariable<F>) -> Self {
+        Self(Rc::new(value))
+    }
+}
+
+impl<F: PrimeField> Deref for Variable<F> {
+    type Target = InnerVariable<F>;
+
+    // Required method
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl<F: PrimeField> InnerVariable<F> {
     ///
     /// Returns `true` if the variable is a constant.
     ///
@@ -70,10 +88,7 @@ impl<F: PrimeField> Variable<F> {
     pub fn index(&self) -> Index {
         match self {
             Self::Constant(..) => 0,
-            Self::Public(index_value) | Self::Private(index_value) => {
-                let (index, _value) = index_value.as_ref();
-                *index
-            }
+            Self::Public(index, _value) | Self::Private(index, _value) => *index,
         }
     }
 
@@ -82,22 +97,19 @@ impl<F: PrimeField> Variable<F> {
     ///
     pub fn value(&self) -> F {
         match self {
-            Self::Constant(value) => **value,
-            Self::Public(index_value) | Self::Private(index_value) => {
-                let (_index, value) = index_value.as_ref();
-                *value
-            }
+            Self::Constant(value) => *value,
+            Self::Public(_index, value) | Self::Private(_index, value) => *value,
         }
     }
 }
 
-impl<F: PrimeField> PartialOrd for Variable<F> {
+impl<F: PrimeField> PartialOrd for InnerVariable<F> {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         Some(self.cmp(other))
     }
 }
 
-impl<F: PrimeField> Ord for Variable<F> {
+impl<F: PrimeField> Ord for InnerVariable<F> {
     fn cmp(&self, other: &Self) -> Ordering {
         match (self, other) {
             (Self::Constant(v1), Self::Constant(v2)) => v1.cmp(v2),
@@ -144,9 +156,11 @@ impl<F: PrimeField> Add<&Variable<F>> for &Variable<F> {
     type Output = LinearCombination<F>;
 
     fn add(self, other: &Variable<F>) -> Self::Output {
-        match (self, other) {
-            (Variable::Constant(a), Variable::Constant(b)) => Variable::Constant(Rc::new(**a + **b)).into(),
-            (first, second) => LinearCombination::from([first.clone(), second.clone()]),
+        if self.is_constant() && other.is_constant() {
+            let (InnerVariable::Constant(a), InnerVariable::Constant(b)) = (self.deref(), other.deref()) else { unreachable!() };
+            Variable::from(InnerVariable::Constant(*a + *b)).into()
+        } else {
+            LinearCombination::from([self.clone(), other.clone()])
         }
     }
 }
@@ -217,9 +231,11 @@ impl<F: PrimeField> Sub<&Variable<F>> for &Variable<F> {
     type Output = LinearCombination<F>;
 
     fn sub(self, other: &Variable<F>) -> Self::Output {
-        match (self, other) {
-            (Variable::Constant(a), Variable::Constant(b)) => Variable::Constant(Rc::new(**a - **b)).into(),
-            (first, second) => LinearCombination::from(first) - second,
+        if self.is_constant() && other.is_constant() {
+            let (InnerVariable::Constant(a), InnerVariable::Constant(b)) = (self.deref(), other.deref()) else { unreachable!() };
+            Variable::from(InnerVariable::Constant(*a - *b)).into()
+        } else {
+            LinearCombination::from(self) - other
         }
     }
 }
@@ -259,23 +275,21 @@ impl<F: PrimeField> Sub<&LinearCombination<F>> for &Variable<F> {
     }
 }
 
-impl<F: PrimeField> fmt::Debug for Variable<F> {
+impl<F: PrimeField> fmt::Debug for InnerVariable<F> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", match self {
             Self::Constant(value) => format!("Constant({value})"),
-            Self::Public(index_value) => {
-                let (index, value) = index_value.as_ref();
+            Self::Public(index, value) => {
                 format!("Public({index}, {value})")
             }
-            Self::Private(index_value) => {
-                let (index, value) = index_value.as_ref();
+            Self::Private(index, value) => {
                 format!("Private({index}, {value})")
             }
         })
     }
 }
 
-impl<F: PrimeField> fmt::Display for Variable<F> {
+impl<F: PrimeField> fmt::Display for InnerVariable<F> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.value())
     }
@@ -287,6 +301,6 @@ mod tests {
 
     #[test]
     fn test_size() {
-        assert_eq!(16, std::mem::size_of::<Variable<<Circuit as Environment>::BaseField>>());
+        assert_eq!(8, std::mem::size_of::<Variable<<Circuit as Environment>::BaseField>>());
     }
 }

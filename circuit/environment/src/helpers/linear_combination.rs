@@ -32,22 +32,21 @@ use core::{
 // A full R1CS row is "completed" when we introduce a multiplication between three non-const linear combinations (a*b=c).
 #[derive(Clone)]
 pub struct LinearCombination<F: PrimeField> {
-    constant: F,
+    // The constant and the value of this linear combination, defined as the sum of the `terms` and the constant.
+    constant_and_value: Box<(F, F)>,
     /// The list of terms is kept sorted in order to speed up lookups.
     terms: Vec<(Variable<F>, F)>,
-    /// The value of this linear combination, defined as the sum of the `terms` and `constant`.
-    value: F,
 }
 
 impl<F: PrimeField> LinearCombination<F> {
     /// Returns the `zero` constant.
     pub(crate) fn zero() -> Self {
-        Self { constant: F::zero(), terms: Default::default(), value: Default::default() }
+        Self { constant_and_value: (F::zero(), F::default()).into(), terms: Default::default() }
     }
 
     /// Returns the `one` constant.
     pub(crate) fn one() -> Self {
-        Self { constant: F::one(), terms: Default::default(), value: F::one() }
+        Self { constant_and_value: (F::one(), F::one()).into(), terms: Default::default() }
     }
 
     /// Returns `true` if there are no terms in the linear combination.
@@ -58,7 +57,7 @@ impl<F: PrimeField> LinearCombination<F> {
     /// Returns `true` if there is exactly one term with a coefficient of one,
     /// and the term contains a public variable.
     pub fn is_public(&self) -> bool {
-        self.constant.is_zero()
+        self.constant().is_zero()
             && self.terms.len() == 1
             && match self.terms.first() {
                 Some((Variable::Public(..), coefficient)) => *coefficient == F::one(),
@@ -83,8 +82,8 @@ impl<F: PrimeField> LinearCombination<F> {
     }
 
     /// Returns the computed value of the linear combination.
-    pub fn value(&self) -> F {
-        self.value
+    pub fn value(&self) -> &F {
+        &self.constant_and_value.1
     }
 
     ///
@@ -98,10 +97,10 @@ impl<F: PrimeField> LinearCombination<F> {
     pub fn is_boolean_type(&self) -> bool {
         // Constant case (enforce Property 1)
         if self.terms.is_empty() {
-            self.constant.is_zero() || self.constant.is_one()
+            self.constant().is_zero() || self.constant().is_one()
         }
         // Public and private cases (enforce Property 1)
-        else if self.constant.is_zero() {
+        else if self.constant().is_zero() {
             // Enforce property 2.
             // Note: This branch is triggered if ANY term is not (zero or one).
             if self.terms.iter().any(|(v, _)| !(v.value().is_zero() || v.value().is_one())) {
@@ -110,7 +109,7 @@ impl<F: PrimeField> LinearCombination<F> {
             }
 
             // Enforce property 3.
-            if !(self.value.is_zero() || self.value.is_one()) {
+            if !(self.value().is_zero() || self.value().is_one()) {
                 eprintln!("Property 3 of the `Boolean` type was violated");
                 return false;
             }
@@ -124,9 +123,13 @@ impl<F: PrimeField> LinearCombination<F> {
         }
     }
 
+    fn constant(&self) -> &F {
+        &self.constant_and_value.0
+    }
+
     /// Returns only the constant value (excluding the terms) in the linear combination.
     pub(super) fn to_constant(&self) -> F {
-        self.constant
+        *self.constant()
     }
 
     /// Returns the terms (excluding the constant value) in the linear combination.
@@ -137,7 +140,7 @@ impl<F: PrimeField> LinearCombination<F> {
     /// Returns the number of nonzeros in the linear combination.
     pub(super) fn num_nonzeros(&self) -> u64 {
         // Increment by one if the constant is nonzero.
-        match self.constant.is_zero() {
+        match self.constant().is_zero() {
             true => self.terms.len() as u64,
             false => (self.terms.len() as u64).saturating_add(1),
         }
@@ -147,7 +150,7 @@ impl<F: PrimeField> LinearCombination<F> {
     #[cfg(test)]
     pub(super) fn num_additions(&self) -> u64 {
         // Increment by one if the constant is nonzero and the number of terms is nonzero.
-        match !self.constant.is_zero() && !self.terms.is_empty() {
+        match !self.constant().is_zero() && !self.terms.is_empty() {
             true => self.terms.len() as u64,
             false => (self.terms.len() as u64).saturating_sub(1),
         }
@@ -195,7 +198,7 @@ impl<F: PrimeField> From<&[Variable<F>]> for LinearCombination<F> {
         let mut output = Self::zero();
         for variable in variables {
             match variable.is_constant() {
-                true => output.constant += variable.value(),
+                true => output.constant_and_value.0 += variable.value(),
                 false => {
                     match output.terms.binary_search_by(|(v, _)| v.cmp(variable)) {
                         Ok(idx) => {
@@ -214,7 +217,7 @@ impl<F: PrimeField> From<&[Variable<F>]> for LinearCombination<F> {
                 }
             }
             // Increment the value of the linear combination by the variable.
-            output.value += variable.value();
+            output.constant_and_value.1 += variable.value();
         }
         output
     }
@@ -226,9 +229,9 @@ impl<F: PrimeField> Neg for LinearCombination<F> {
     #[inline]
     fn neg(self) -> Self::Output {
         let mut output = self;
-        output.constant = -output.constant;
+        output.constant_and_value.0 = -output.constant_and_value.0;
         output.terms.iter_mut().for_each(|(_, coefficient)| *coefficient = -(*coefficient));
-        output.value = -output.value;
+        output.constant_and_value.1 = -output.constant_and_value.1;
         output
     }
 }
@@ -296,9 +299,9 @@ impl<F: PrimeField> Add<&LinearCombination<F>> for &LinearCombination<F> {
     type Output = LinearCombination<F>;
 
     fn add(self, other: &LinearCombination<F>) -> Self::Output {
-        if self.constant.is_zero() && self.terms.is_empty() {
+        if self.constant().is_zero() && self.terms.is_empty() {
             other.clone()
-        } else if other.constant.is_zero() && other.terms.is_empty() {
+        } else if other.constant().is_zero() && other.terms.is_empty() {
             self.clone()
         } else if self.terms.len() > other.terms.len() {
             let mut output = self.clone();
@@ -321,15 +324,15 @@ impl<F: PrimeField> AddAssign<LinearCombination<F>> for LinearCombination<F> {
 impl<F: PrimeField> AddAssign<&LinearCombination<F>> for LinearCombination<F> {
     fn add_assign(&mut self, other: &Self) {
         // If `other` is empty, return immediately.
-        if other.constant.is_zero() && other.terms.is_empty() {
+        if other.constant().is_zero() && other.terms.is_empty() {
             return;
         }
 
-        if self.constant.is_zero() && self.terms.is_empty() {
+        if self.constant().is_zero() && self.terms.is_empty() {
             *self = other.clone();
         } else {
             // Add the constant value from `other` to `self`.
-            self.constant += other.constant;
+            self.constant_and_value.0 += other.constant();
 
             // Add the terms from `other` to the terms of `self`.
             for (variable, coefficient) in other.terms.iter() {
@@ -355,7 +358,7 @@ impl<F: PrimeField> AddAssign<&LinearCombination<F>> for LinearCombination<F> {
             }
 
             // Add the value from `other` to `self`.
-            self.value += other.value;
+            self.constant_and_value.1 += other.constant_and_value.1;
         }
     }
 }
@@ -432,7 +435,7 @@ impl<F: PrimeField> Mul<&F> for LinearCombination<F> {
 
     fn mul(self, coefficient: &F) -> Self::Output {
         let mut output = self;
-        output.constant *= coefficient;
+        output.constant_and_value.0 *= coefficient;
         output.terms = output
             .terms
             .into_iter()
@@ -441,7 +444,7 @@ impl<F: PrimeField> Mul<&F> for LinearCombination<F> {
                 (!res.is_zero()).then_some((v, res))
             })
             .collect();
-        output.value *= coefficient;
+        output.constant_and_value.1 *= coefficient;
         output
     }
 }
@@ -465,7 +468,7 @@ impl<F: PrimeField> Mul<&F> for &LinearCombination<F> {
 
 impl<F: PrimeField> fmt::Debug for LinearCombination<F> {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        let mut output = format!("Constant({})", self.constant);
+        let mut output = format!("Constant({})", self.constant());
 
         for (variable, coefficient) in &self.terms {
             output += &match (variable.mode(), coefficient.is_one()) {
@@ -480,7 +483,7 @@ impl<F: PrimeField> fmt::Debug for LinearCombination<F> {
 
 impl<F: PrimeField> fmt::Display for LinearCombination<F> {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        write!(f, "{}", self.value)
+        write!(f, "{}", self.value())
     }
 }
 

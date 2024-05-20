@@ -80,7 +80,7 @@ impl<E: Environment> Eject for Field<E> {
 
     /// Ejects the field circuit as a console field.
     fn eject_value(&self) -> Self::Primitive {
-        console::Field::new(self.linear_combination.value())
+        console::Field::new(*self.linear_combination.value())
     }
 }
 

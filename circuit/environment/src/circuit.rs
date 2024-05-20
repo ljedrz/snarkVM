@@ -173,8 +173,8 @@ impl Environment for Circuit {
                         true => {
                             // Evaluate the constant constraint.
                             assert_eq!(
-                                a.value() * b.value(),
-                                c.value(),
+                                *a.value() * *b.value(),
+                                *c.value(),
                                 "Constant constraint failed: ({a} * {b}) =?= {c}"
                             );
 

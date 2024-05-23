@@ -2696,6 +2696,7 @@ dependencies = [
  "num-traits",
  "once_cell",
  "serial_test",
+ "smallvec",
  "snarkvm-algorithms",
  "snarkvm-circuit",
  "snarkvm-circuit-environment-witness",

@@ -378,31 +378,30 @@ impl<F: PrimeField, const RATE: usize> PoseidonSponge<F, RATE, 1> {
     pub fn get_limbs_representations<TargetField: PrimeField>(
         elem: &TargetField,
         optimization_type: OptimizationType,
+        be_vec: &mut Vec<bool>,
     ) -> SmallVec<[F; 10]> {
-        Self::get_limbs_representations_from_big_integer::<TargetField>(&elem.to_bigint(), optimization_type)
+        Self::get_limbs_representations_from_big_integer::<TargetField>(&elem.to_bigint(), optimization_type, be_vec)
     }
 
     /// Obtain the limbs directly from a big int
     pub fn get_limbs_representations_from_big_integer<TargetField: PrimeField>(
         elem: &<TargetField as PrimeField>::BigInteger,
         optimization_type: OptimizationType,
+        be_vec: &mut Vec<bool>,
     ) -> SmallVec<[F; 10]> {
         let params = get_params(TargetField::size_in_bits(), F::size_in_bits(), optimization_type);
 
-        // Prepare a reusable vector for the BE bits.
-        let mut cur_bits = Vec::new();
         // Push the lower limbs first
         let mut limbs: SmallVec<[F; 10]> = SmallVec::new();
         let mut cur = *elem;
         for _ in 0..params.num_limbs {
-            cur.write_bits_be(&mut cur_bits); // `write_bits_be` is big endian
+            cur.write_bits_be(be_vec); // `write_bits_be` is big endian
             let cur_mod_r =
-                <F as PrimeField>::BigInteger::from_bits_be(&cur_bits[cur_bits.len() - params.bits_per_limb..])
-                    .unwrap(); // therefore, the lowest `bits_per_non_top_limb` bits is what we want.
+                <F as PrimeField>::BigInteger::from_bits_be(&be_vec[be_vec.len() - params.bits_per_limb..]).unwrap(); // therefore, the lowest `bits_per_non_top_limb` bits is what we want.
             limbs.push(F::from_bigint(cur_mod_r).unwrap());
             cur.divn(params.bits_per_limb as u32);
             // Clear the vector after every iteration so its allocation can be reused.
-            cur_bits.clear();
+            be_vec.clear();
         }
 
         // then we reverse, so that the limbs are ``big limb first''
@@ -417,10 +416,11 @@ impl<F: PrimeField, const RATE: usize> PoseidonSponge<F, RATE, 1> {
         src: impl IntoIterator<Item = TargetField>,
         ty: OptimizationType,
     ) {
+        let mut be_vec = Vec::new();
         let src_limbs = src
             .into_iter()
             .flat_map(|elem| {
-                let limbs = Self::get_limbs_representations(&elem, ty);
+                let limbs = Self::get_limbs_representations(&elem, ty, &mut be_vec);
                 limbs.into_iter().map(|limb| (limb, F::one()))
                 // specifically set to one, since most gadgets in the constraint world would not have zero noise (due to the relatively weak normal form testing in `alloc`)
             })

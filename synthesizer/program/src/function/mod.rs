@@ -62,7 +62,9 @@ impl<
             let iter = u.arbitrary_iter::<Input<N>>()?;
             for elem_result in iter {
                 let elem = elem_result?;
-                inputs.insert(elem);
+                if !matches!(elem.value_type(), ValueType::Constant(..) | ValueType::Future(..)) {
+                    inputs.insert(elem);
+                }
             }
             inputs
         };

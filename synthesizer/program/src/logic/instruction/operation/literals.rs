@@ -32,7 +32,7 @@ pub type BinaryLiteral<N, O> = Literals<N, O, 2>;
 /// A ternary literal operation.
 pub type TernaryLiteral<N, O> = Literals<N, O, 3>;
 
-#[derive(Clone, PartialEq, Eq, Hash)]
+#[derive(arbitrary::Arbitrary, Clone, PartialEq, Eq, Hash)]
 pub struct Literals<N: Network, O: Operation<N, Literal<N>, LiteralType, NUM_OPERANDS>, const NUM_OPERANDS: usize> {
     /// The operands.
     operands: Vec<Operand<N>>,

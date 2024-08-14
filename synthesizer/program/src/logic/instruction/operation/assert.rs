@@ -33,7 +33,7 @@ enum Variant {
 }
 
 /// Asserts an operation on two operands.
-#[derive(Clone, PartialEq, Eq, Hash)]
+#[derive(arbitrary::Arbitrary, Clone, PartialEq, Eq, Hash)]
 pub struct AssertInstruction<N: Network, const VARIANT: u8> {
     /// The operands.
     operands: Vec<Operand<N>>,

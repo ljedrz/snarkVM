@@ -81,7 +81,7 @@ lazy_static! {
 
 pub const TRANSACTION_PREFIX: &str = "at";
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(arbitrary::Arbitrary, Copy, Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct MainnetV0;
 
 impl MainnetV0 {

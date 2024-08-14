@@ -23,7 +23,7 @@ use console::{
 };
 
 /// The operator references a function name or closure name.
-#[derive(Clone, PartialEq, Eq, Hash)]
+#[derive(arbitrary::Arbitrary, Clone, PartialEq, Eq, Hash)]
 pub enum CallOperator<N: Network> {
     /// The reference to a non-local function or closure.
     Locator(Locator<N>),
@@ -110,7 +110,7 @@ impl<N: Network> ToBytes for CallOperator<N> {
 
 /// Calls the operands into the declared type.
 /// i.e. `call transfer r0.owner 0u64 r1.amount into r1 r2;`
-#[derive(Clone, PartialEq, Eq, Hash)]
+#[derive(arbitrary::Arbitrary, Clone, PartialEq, Eq, Hash)]
 pub struct Call<N: Network> {
     /// The reference.
     operator: CallOperator<N>,

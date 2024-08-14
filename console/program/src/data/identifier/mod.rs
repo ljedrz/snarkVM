@@ -22,6 +22,7 @@ mod size_in_bits;
 mod to_bits;
 mod to_field;
 
+use arbitrary::{Arbitrary, Unstructured};
 use snarkvm_console_network::Network;
 use snarkvm_console_types::{prelude::*, Field};
 
@@ -34,8 +35,15 @@ use snarkvm_console_types::{prelude::*, Field};
 /// The identifier must be alphanumeric, and may include underscores.
 /// The identifier must not consist solely of underscores.
 /// The identifier must fit within the data capacity of a base field element.
-#[derive(arbitrary::Arbitrary, Copy, Clone)]
+#[derive(Copy, Clone)]
 pub struct Identifier<N: Network>(Field<N>, u8); // Number of bytes in the identifier.
+
+impl<'a, N: Network> arbitrary::Arbitrary<'a> for Identifier<N> {
+    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
+        let mut rng = TestRng::fixed(<u64 as Arbitrary<'a>>::arbitrary(u)?);
+        Ok(Self::try_from(tests::sample_lowercase_identifier_as_string::<N>(&mut rng).unwrap()).unwrap())
+    }
+}
 
 impl<N: Network> From<&Identifier<N>> for Identifier<N> {
     /// Returns a copy of the identifier.
@@ -71,7 +79,7 @@ impl<N: Network> TryFrom<&str> for Identifier<N> {
     }
 }
 
-#[cfg(test)]
+// #[cfg(test)]
 pub(crate) mod tests {
     use super::*;
     use snarkvm_console_network::MainnetV0;

@@ -115,7 +115,7 @@ fn is_valid_destination_type<N: Network>(destination_type: &PlaintextType<N>) ->
 }
 
 /// Hashes the operand into the declared type.
-#[derive(Clone, PartialEq, Eq, Hash)]
+#[derive(arbitrary::Arbitrary, Clone, PartialEq, Eq, Hash)]
 pub struct HashInstruction<N: Network, const VARIANT: u8> {
     /// The operand as `input`.
     operands: Vec<Operand<N>>,

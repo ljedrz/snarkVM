@@ -26,7 +26,7 @@ use snarkvm_console_types::prelude::*;
 use indexmap::IndexMap;
 
 /// An entry stored in program data.
-#[derive(Clone)]
+#[derive(arbitrary::Arbitrary, Clone)]
 pub enum Entry<N: Network, Private: Visibility> {
     /// A constant entry.
     Constant(Plaintext<N>),

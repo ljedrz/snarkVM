@@ -429,16 +429,16 @@ impl<N: Network> StackExecute<N> for Stack<N> {
         let assignment = A::eject_assignment_and_reset();
 
         // If the circuit is in `Synthesize` or `Execute` mode, synthesize the circuit key, if it does not exist.
-        if matches!(registers.call_stack(), CallStack::Synthesize(..))
-            || matches!(registers.call_stack(), CallStack::Execute(..))
-        {
-            // If the proving key does not exist, then synthesize it.
-            if !self.contains_proving_key(function.name()) {
-                // Add the circuit key to the mapping.
-                self.synthesize_from_assignment(function.name(), &assignment)?;
-                lap!(timer, "Synthesize the {} circuit key", function.name());
-            }
-        }
+        // if matches!(registers.call_stack(), CallStack::Synthesize(..))
+        //     || matches!(registers.call_stack(), CallStack::Execute(..))
+        // {
+        //     // If the proving key does not exist, then synthesize it.
+        //     if !self.contains_proving_key(function.name()) {
+        //         // Add the circuit key to the mapping.
+        //         self.synthesize_from_assignment(function.name(), &assignment)?;
+        //         lap!(timer, "Synthesize the {} circuit key", function.name());
+        //     }
+        // }
         // If the circuit is in `Authorize` mode, then save the transition.
         if let CallStack::Authorize(_, _, authorization) = registers.call_stack() {
             // Construct the transition.

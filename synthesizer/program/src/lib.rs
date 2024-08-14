@@ -134,16 +134,6 @@ impl<
         let id = <ProgramID<N> as arbitrary::Arbitrary>::arbitrary(u)?;
         let imports = Default::default();
 
-        let identifiers = {
-            let mut identifiers = IndexMap::new();
-            let iter = u.arbitrary_iter::<(Identifier<N>, ProgramDefinition)>()?;
-            for elem_result in iter {
-                let (k, v) = elem_result?;
-                identifiers.insert(k, v);
-            }
-            identifiers
-        };
-
         let mappings = {
             let mut mappings = IndexMap::new();
             let iter = u.arbitrary_iter::<(Identifier<N>, Mapping<N>)>()?;
@@ -186,12 +176,34 @@ impl<
 
         let functions = {
             let mut functions = IndexMap::new();
-            let iter = u.arbitrary_iter::<(Identifier<N>, FunctionCore<N, Instruction, Command>)>()?;
-            for elem_result in iter {
-                let (k, v) = elem_result?;
-                functions.insert(k, v);
+            while functions.is_empty() {
+                let iter = u.arbitrary_iter::<(Identifier<N>, FunctionCore<N, Instruction, Command>)>()?;
+                for elem_result in iter {
+                    let (k, v) = elem_result?;
+                    functions.insert(k, v);
+                }
             }
             functions
+        };
+        
+        let identifiers = {
+            let mut identifiers = IndexMap::new();
+            for id in mappings.keys() {
+                identifiers.insert(*id, ProgramDefinition::Mapping);
+            }
+            for id in structs.keys() {
+                identifiers.insert(*id, ProgramDefinition::Struct);
+            }
+            for id in records.keys() {
+                identifiers.insert(*id, ProgramDefinition::Record);
+            }
+            for id in closures.keys() {
+                identifiers.insert(*id, ProgramDefinition::Closure);
+            }
+            for id in functions.keys() {
+                identifiers.insert(*id, ProgramDefinition::Function);
+            }
+            identifiers
         };
 
         Ok(Self { id, imports, identifiers, mappings, structs, records, closures, functions })

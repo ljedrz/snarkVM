@@ -15,7 +15,7 @@
 use super::*;
 
 /// An argument passed into a future.
-#[derive(Clone)]
+#[derive(arbitrary::Arbitrary, Clone)]
 pub enum Argument<N: Network> {
     /// A plaintext value.
     Plaintext(Plaintext<N>),

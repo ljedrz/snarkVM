@@ -52,6 +52,24 @@ pub struct Record<N: Network, Private: Visibility> {
     nonce: Group<N>,
 }
 
+impl<'a, N: Network + arbitrary::Arbitrary<'a>, Private: Visibility + arbitrary::Arbitrary<'a>> arbitrary::Arbitrary<'a>
+    for Record<N, Private>
+{
+    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
+        let owner = <Owner<N, Private> as arbitrary::Arbitrary<'a>>::arbitrary(u)?;
+        let nonce = <Group<N> as arbitrary::Arbitrary<'a>>::arbitrary(u)?;
+
+        let mut data = IndexMap::new();
+        let iter = u.arbitrary_iter::<(Identifier<N>, Entry<N, Private>)>()?;
+        for elem_result in iter {
+            let (k, v) = elem_result?;
+            data.insert(k, v);
+        }
+
+        Ok(Self { owner, data, nonce })
+    }
+}
+
 impl<N: Network, Private: Visibility> Record<N, Private> {
     /// Initializes a new record plaintext.
     pub fn from_plaintext(

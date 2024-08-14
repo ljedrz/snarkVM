@@ -42,6 +42,41 @@ pub enum Plaintext<N: Network> {
     Array(Vec<Plaintext<N>>, OnceCell<Vec<bool>>),
 }
 
+impl<'a, N: Network + arbitrary::Arbitrary<'a>> arbitrary::Arbitrary<'a> for Plaintext<N> {
+    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
+        let ret = match <u8 as arbitrary::Arbitrary<'a>>::arbitrary(u)? % 3 {
+            0 => {
+                let literal = <Literal<N> as arbitrary::Arbitrary<'a>>::arbitrary(u)?;
+
+                Self::Literal(literal, OnceCell::new())
+            }
+            1 => {
+                let mut map = IndexMap::new();
+                let iter = u.arbitrary_iter::<(Identifier<N>, Plaintext<N>)>()?;
+                for elem_result in iter {
+                    let (k, v) = elem_result?;
+                    map.insert(k, v);
+                }
+
+                Self::Struct(map, OnceCell::new())
+            }
+            2 => {
+                let mut vec = Vec::new();
+                let iter = u.arbitrary_iter::<Plaintext<N>>()?;
+                for elem_result in iter {
+                    let e = elem_result?;
+                    vec.push(e);
+                }
+
+                Self::Array(vec, OnceCell::new())
+            }
+            _ => unreachable!(),
+        };
+
+        Ok(ret)
+    }
+}
+
 impl<N: Network> From<Literal<N>> for Plaintext<N> {
     /// Returns a new `Plaintext` from a `Literal`.
     fn from(literal: Literal<N>) -> Self {

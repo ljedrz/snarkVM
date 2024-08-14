@@ -25,7 +25,7 @@ use console::{
 };
 
 /// Computes whether `signature` is valid for the given `address` and `message`.
-#[derive(Clone, PartialEq, Eq, Hash)]
+#[derive(arbitrary::Arbitrary, Clone, PartialEq, Eq, Hash)]
 pub struct SignVerify<N: Network> {
     /// The operands.
     operands: Vec<Operand<N>>,

@@ -29,7 +29,7 @@ use console::{
 };
 
 /// Invokes the asynchronous call on the operands, producing a future.
-#[derive(Clone, PartialEq, Eq, Hash)]
+#[derive(arbitrary::Arbitrary, Clone, PartialEq, Eq, Hash)]
 pub struct Async<N: Network> {
     /// The function name.
     function_name: Identifier<N>,

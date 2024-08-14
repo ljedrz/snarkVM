@@ -17,7 +17,7 @@ use snarkvm_console_network::prelude::*;
 use snarkvm_console_types::{Address, Boolean, Field};
 
 /// A value stored in program data.
-#[derive(Clone)]
+#[derive(arbitrary::Arbitrary, Clone)]
 pub enum Owner<N: Network, Private: Visibility> {
     /// A publicly-visible value.
     Public(Address<N>),

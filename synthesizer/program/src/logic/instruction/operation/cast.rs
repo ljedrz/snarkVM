@@ -50,7 +50,7 @@ use console::{
 
 use indexmap::IndexMap;
 
-#[derive(Clone, PartialEq, Eq, Hash)]
+#[derive(arbitrary::Arbitrary, Clone, PartialEq, Eq, Hash)]
 /// The type of the cast operation.
 pub enum CastType<N: Network> {
     GroupXCoordinate,
@@ -158,7 +158,7 @@ enum CastVariant {
 }
 
 /// Casts the operands into the declared type.
-#[derive(Clone, PartialEq, Eq, Hash)]
+#[derive(arbitrary::Arbitrary, Clone, PartialEq, Eq, Hash)]
 pub struct CastOperation<N: Network, const VARIANT: u8> {
     /// The operands.
     operands: Vec<Operand<N>>,

@@ -34,7 +34,7 @@ enum Variant {
 }
 
 /// Computes an equality operation on two operands, and stores the outcome in `destination`.
-#[derive(Clone, PartialEq, Eq, Hash)]
+#[derive(arbitrary::Arbitrary, Clone, PartialEq, Eq, Hash)]
 pub struct IsInstruction<N: Network, const VARIANT: u8> {
     /// The operands.
     operands: Vec<Operand<N>>,

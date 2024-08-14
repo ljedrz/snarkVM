@@ -29,12 +29,21 @@ fn is_lowercase_alphanumeric(s: &str) -> bool {
 }
 
 /// A program ID is of the form `{name}.{network}`.
-#[derive(arbitrary::Arbitrary, Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash)]
 pub struct ProgramID<N: Network> {
     /// The program name.
     name: Identifier<N>,
     /// The network-level domain (NLD).
     network: Identifier<N>,
+}
+
+impl<'a, N: Network> arbitrary::Arbitrary<'a> for ProgramID<N> {
+    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
+        Ok(Self {
+            name: <Identifier<N> as arbitrary::Arbitrary<'a>>::arbitrary(u)?,
+            network: Identifier::from_str("aleo").unwrap(),
+        })
+    }
 }
 
 impl<N: Network> From<&ProgramID<N>> for ProgramID<N> {

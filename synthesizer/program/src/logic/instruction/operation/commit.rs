@@ -51,7 +51,7 @@ fn is_valid_destination_type(destination_type: LiteralType) -> bool {
 }
 
 /// Commits the operand into the declared type.
-#[derive(Clone, PartialEq, Eq, Hash)]
+#[derive(arbitrary::Arbitrary, Clone, PartialEq, Eq, Hash)]
 pub struct CommitInstruction<N: Network, const VARIANT: u8> {
     /// The operand as `input`.
     operands: Vec<Operand<N>>,

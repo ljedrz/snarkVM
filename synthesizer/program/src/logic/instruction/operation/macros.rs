@@ -55,7 +55,7 @@ macro_rules! operation {
     // K-ary operation.
     ($vis:vis struct $name:ident<$operator:path, $circuit_operator:path, $operate:ident, $opcode:tt, $num_inputs:tt> { $( ( $($input:ident),+ ) => $output:ident $( ($($condition:tt),+) )?, )+ }) => {
         /// The implementation of the binary operation.
-        #[derive(Clone, PartialEq, Eq, Hash)]
+        #[derive(arbitrary::Arbitrary, Clone, PartialEq, Eq, Hash)]
         $vis struct $name<N: Network>(core::marker::PhantomData<N>);
 
         impl<N: Network> $crate::Operation<N, console::program::Literal<N>, console::program::LiteralType, $num_inputs> for $name<N> {
@@ -110,7 +110,7 @@ macro_rules! operation {
     // K-ary operation with question mark (?).
     ($vis:vis struct $name:ident<$operator:path, $circuit_operator:path, $operate:ident?, $opcode:tt, $num_inputs:tt> { $( ( $($input:ident),+ ) => $output:ident $( ($($condition:tt),+) )?, )+ }) => {
         /// The implementation of the binary operation.
-        #[derive(Clone, PartialEq, Eq, Hash)]
+        #[derive(arbitrary::Arbitrary, Clone, PartialEq, Eq, Hash)]
         $vis struct $name<N: Network>(core::marker::PhantomData<N>);
 
         impl<N: Network> $crate::Operation<N, console::program::Literal<N>, console::program::LiteralType, $num_inputs> for $name<N> {

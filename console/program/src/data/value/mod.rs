@@ -24,7 +24,7 @@ use crate::{Access, Argument, Entry, Future, Literal, Plaintext, Record};
 use snarkvm_console_network::Network;
 use snarkvm_console_types::prelude::*;
 
-#[derive(Clone)]
+#[derive(arbitrary::Arbitrary, Clone)]
 pub enum Value<N: Network> {
     /// A plaintext value.
     Plaintext(Plaintext<N>),

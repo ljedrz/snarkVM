@@ -30,7 +30,7 @@ use snarkvm_console_types::prelude::*;
 // TODO (@d0cd). Implement `FromBytes` and `FromBits` for `Future`.
 
 /// A future.
-#[derive(Clone)]
+#[derive(arbitrary::Arbitrary, Clone)]
 pub struct Future<N: Network> {
     /// The program ID.
     program_id: ProgramID<N>,

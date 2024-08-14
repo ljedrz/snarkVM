@@ -59,6 +59,9 @@ version = "=0.16.19"
 [dependencies.anyhow]
 version = "1.0.73"
 
+[dependencies.arbitrary]
+version = "1"
+
 [dependencies.indexmap]
 version = "2"
 

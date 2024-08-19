@@ -24,7 +24,7 @@ use crate::{Access, Argument, Entry, Future, Literal, Plaintext, Record};
 use snarkvm_console_network::Network;
 use snarkvm_console_types::prelude::*;
 
-#[derive(arbitrary::Arbitrary, Clone)]
+#[derive(Clone)]
 pub enum Value<N: Network> {
     /// A plaintext value.
     Plaintext(Plaintext<N>),
@@ -32,6 +32,36 @@ pub enum Value<N: Network> {
     Record(Record<N, Plaintext<N>>),
     /// A future.
     Future(Future<N>),
+}
+
+impl<'a, N: Network + arbitrary::Arbitrary<'a>> arbitrary::Arbitrary<'a> for Value<N> {
+    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
+        let cand = match <u8 as arbitrary::Arbitrary<'a>>::arbitrary(u)? % 3 {
+            0 => {
+                let pt = <Plaintext<N> as arbitrary::Arbitrary<'a>>::arbitrary(u)?;
+
+                Self::Plaintext(pt)
+            }
+            1 => {
+                let r = <Record<N, Plaintext<N>> as arbitrary::Arbitrary<'a>>::arbitrary(u)?;
+
+                Self::Record(r)
+            }
+            2 => {
+                let f = <Future<N> as arbitrary::Arbitrary<'a>>::arbitrary(u)?;
+
+                Self::Future(f)
+            }
+            _ => unreachable!(),
+        };
+
+        let aus = std::panic::AssertUnwindSafe(cand.clone());
+        if std::panic::catch_unwind(|| format!("{:?}", *aus)).is_err() {
+            return Err(arbitrary::Error::IncorrectFormat);
+        }
+
+        Ok(cand)
+    }
 }
 
 impl<N: Network> From<Literal<N>> for Value<N> {

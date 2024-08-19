@@ -125,34 +125,36 @@ pub struct ProgramCore<N: Network, Instruction: InstructionTrait<N>, Command: Co
 
 impl<
     'a,
-    N: Network + arbitrary::Arbitrary<'a>,
-    Instruction: InstructionTrait<N> + arbitrary::Arbitrary<'a>,
-    Command: CommandTrait<N>,
+    N: Network + arbitrary::Arbitrary<'a> + PartialEq,
+    Instruction: InstructionTrait<N> + arbitrary::Arbitrary<'a> + PartialEq,
+    Command: CommandTrait<N> + PartialEq,
 > arbitrary::Arbitrary<'a> for ProgramCore<N, Instruction, Command>
 {
     fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
         let id = <ProgramID<N> as arbitrary::Arbitrary>::arbitrary(u)?;
-        let imports = Default::default();
+        let imports = IndexMap::default();
 
-        let mappings = {
-            let mut mappings = IndexMap::new();
-            let iter = u.arbitrary_iter::<(Identifier<N>, Mapping<N>)>()?;
-            for elem_result in iter {
-                let (k, v) = elem_result?;
-                mappings.insert(k, v);
-            }
-            mappings
-        };
+        // let mappings = {
+        //     let mut mappings = IndexMap::new();
+        //     let iter = u.arbitrary_iter::<(Identifier<N>, Mapping<N>)>()?;
+        //     for elem_result in iter {
+        //         let (k, v) = elem_result?;
+        //         mappings.insert(k, v);
+        //     }
+        //     mappings
+        // };
+        let mappings = IndexMap::new();
 
-        let structs = {
-            let mut structs = IndexMap::new();
-            let iter = u.arbitrary_iter::<(Identifier<N>, StructType<N>)>()?;
-            for elem_result in iter {
-                let (k, v) = elem_result?;
-                structs.insert(k, v);
-            }
-            structs
-        };
+        // let structs = {
+        //     let mut structs = IndexMap::new();
+        //     let iter = u.arbitrary_iter::<(Identifier<N>, StructType<N>)>()?;
+        //     for elem_result in iter {
+        //         let (k, v) = elem_result?;
+        //         structs.insert(k, v);
+        //     }
+        //     structs
+        // };
+        let structs = IndexMap::new();
 
         let records = {
             let mut records = IndexMap::new();
@@ -164,28 +166,34 @@ impl<
             records
         };
 
-        let closures = {
-            let mut closures = IndexMap::new();
-            let iter = u.arbitrary_iter::<(Identifier<N>, ClosureCore<N, Instruction>)>()?;
-            for elem_result in iter {
-                let (k, v) = elem_result?;
-                closures.insert(k, v);
-            }
-            closures
-        };
+        // let closures = {
+        //     let mut closures = IndexMap::new();
+        //     let iter = u.arbitrary_iter::<(Identifier<N>, ClosureCore<N, Instruction>)>()?;
+        //     for elem_result in iter {
+        //         let (k, v) = elem_result?;
+        //         closures.insert(k, v);
+        //     }
+        //     closures
+        // };
+        let closures = IndexMap::new();
 
-        let functions = {
-            let mut functions = IndexMap::new();
-            while functions.is_empty() {
-                let iter = u.arbitrary_iter::<(Identifier<N>, FunctionCore<N, Instruction, Command>)>()?;
-                for elem_result in iter {
-                    let (k, v) = elem_result?;
-                    functions.insert(k, v);
-                }
-            }
-            functions
-        };
-        
+        // let functions = {
+        //     let mut functions = IndexMap::new();
+        //     while functions.is_empty() {
+        //         let iter = u.arbitrary_iter::<(Identifier<N>, FunctionCore<N, Instruction, Command>)>()?;
+        //         for elem_result in iter {
+        //             let (k, v) = elem_result?;
+        //             functions.insert(k, v);
+        //         }
+        //     }
+        //     functions
+        // };
+
+        let mut functions = IndexMap::new();
+        let function_name = <Identifier<N> as arbitrary::Arbitrary>::arbitrary(u)?;
+        let function = <FunctionCore<N, Instruction, Command> as arbitrary::Arbitrary>::arbitrary(u)?;
+        functions.insert(function_name, function);
+    
         let identifiers = {
             let mut identifiers = IndexMap::new();
             for id in mappings.keys() {
@@ -206,7 +214,35 @@ impl<
             identifiers
         };
 
-        Ok(Self { id, imports, identifiers, mappings, structs, records, closures, functions })
+        let program = Self { id, imports: imports.clone(), identifiers, mappings, structs, records, closures, functions };
+
+        let ausprogram = std::panic::AssertUnwindSafe(program.clone());
+        match std::panic::catch_unwind(|| {
+            let program_string = ausprogram.to_string();
+            let Ok(program_from_string) = Self::from_str(&program_string) else {
+                return false;
+            };
+
+            if *ausprogram != program_from_string {
+                return false;
+            }
+
+            let Ok(program_bytes) = ausprogram.to_bytes_le() else {
+                return false;
+            };
+            let Ok(program_from_bytes) = Self::from_bytes_le(&program_bytes) else {
+                return false;
+            };
+
+            if *ausprogram != program_from_bytes {
+                return false;
+            }
+
+            true
+        }) {
+            Ok(true) => return Ok(program),
+            _ => return Err(arbitrary::Error::IncorrectFormat),
+        };
     }
 }
 

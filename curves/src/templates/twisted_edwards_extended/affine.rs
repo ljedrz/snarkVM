@@ -323,6 +323,9 @@ impl<P: Parameters> From<Projective<P>> for Affine<P> {
             Affine::new(p.x, p.y, p.t)
         } else {
             // Z is nonzero, so it must have an inverse in a field.
+            let Some(z_inv) = p.z.inverse() else {
+                return Affine::zero();
+            };
             let z_inv = p.z.inverse().unwrap();
             let x = p.x * z_inv;
             let y = p.y * z_inv;

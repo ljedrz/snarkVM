@@ -23,52 +23,31 @@ fn main() {
     let rng = &mut TestRng::fixed(7777777);
     let private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
 
-    afl::fuzz_nohook!(|program_inputs: (Program<CurrentNetwork>, Vec<Value<CurrentNetwork>>)| {
+    afl::fuzz_nohook!(|program_inputs: (Program<CurrentNetwork>, Option<Vec<Value<CurrentNetwork>>>)| {
         let (program, inputs) = program_inputs;
 
-        if program.functions().is_empty() {
+        let inputs = inputs.unwrap_or_default();
+
+        if inputs.len() > 2 {
             return;
         }
-        match std::panic::catch_unwind(|| {
-            let program_string = program.to_string();
-            let Ok(program_from_string) = Program::from_str(&program_string) else {
-                return false;
-            };
 
-            if program != program_from_string {
-                return false;
-            }
-            
-            true
-        }) {
-            Ok(true) => {},
-            _ => return,
-        };
-
-        let Ok(program_bytes) = program.to_bytes_le() else {
+        if program.functions()[0].inputs().len() != inputs.len() {
             return;
-        };
-        let Ok(program_from_bytes) = Program::from_bytes_le(&program_bytes) else {
-            return;
-        };
-        if program != program_from_bytes {
-            return;
-        };
-        
-        let Some(function_name) = program.functions().values().next().map(|foo| foo.name()) else {
-            return;
-        };
+        }
 
         let mut process = Process::load().unwrap();
         if process.add_program(&program).is_err() {
             return;
         }
 
-        let Ok(authorization) =
-            process.authorize::<CurrentAleo, _>(&private_key, program.id(), function_name, inputs.into_iter(), rng) else {
-                return;
-        };
+        for function_name in program.functions().values().map(|foo| foo.name()) {
+            let Ok(authorization) =
+                process.authorize::<CurrentAleo, _>(&private_key, program.id(), function_name, inputs.clone().into_iter(), rng) else {
+                    continue;
+            };
 
-        let _ = process.execute::<CurrentAleo, _>(authorization, rng);
+            let _ = process.execute::<CurrentAleo, _>(authorization, rng);
+        };
     });
 }

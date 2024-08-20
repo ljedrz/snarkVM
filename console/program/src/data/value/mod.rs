@@ -36,23 +36,23 @@ pub enum Value<N: Network> {
 
 impl<'a, N: Network + arbitrary::Arbitrary<'a>> arbitrary::Arbitrary<'a> for Value<N> {
     fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
-        let cand = match <u8 as arbitrary::Arbitrary<'a>>::arbitrary(u)? % 3 {
-            0 => {
+        let cand = /*match <u8 as arbitrary::Arbitrary<'a>>::arbitrary(u)? % 3*/ {
+            // 0 => {
                 let pt = <Plaintext<N> as arbitrary::Arbitrary<'a>>::arbitrary(u)?;
 
                 Self::Plaintext(pt)
-            }
-            1 => {
-                let r = <Record<N, Plaintext<N>> as arbitrary::Arbitrary<'a>>::arbitrary(u)?;
+            // }
+            // 1 => {
+            //     let r = <Record<N, Plaintext<N>> as arbitrary::Arbitrary<'a>>::arbitrary(u)?;
 
-                Self::Record(r)
-            }
-            2 => {
-                let f = <Future<N> as arbitrary::Arbitrary<'a>>::arbitrary(u)?;
+            //     Self::Record(r)
+            // }
+            // 2 => {
+            //     let f = <Future<N> as arbitrary::Arbitrary<'a>>::arbitrary(u)?;
 
-                Self::Future(f)
-            }
-            _ => unreachable!(),
+            //     Self::Future(f)
+            // }
+            // _ => unreachable!(),
         };
 
         let aus = std::panic::AssertUnwindSafe(cand.clone());

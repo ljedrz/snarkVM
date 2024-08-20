@@ -115,7 +115,7 @@ fn is_valid_destination_type<N: Network>(destination_type: &PlaintextType<N>) ->
 }
 
 /// Hashes the operand into the declared type.
-#[derive(arbitrary::Arbitrary, Clone, PartialEq, Eq, Hash)]
+#[derive(Clone, PartialEq, Eq, Hash)]
 pub struct HashInstruction<N: Network, const VARIANT: u8> {
     /// The operand as `input`.
     operands: Vec<Operand<N>>,
@@ -123,6 +123,17 @@ pub struct HashInstruction<N: Network, const VARIANT: u8> {
     destination: Register<N>,
     /// The destination register type.
     destination_type: PlaintextType<N>,
+}
+
+impl<'a, N: Network + arbitrary::Arbitrary<'a>, const VARIANT: u8> arbitrary::Arbitrary<'a> for HashInstruction<N, VARIANT>
+{
+    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
+        let operands = <Vec<Operand<N>> as arbitrary::Arbitrary>::arbitrary(u)?;
+        let destination = Register::Locator(<u64 as arbitrary::Arbitrary>::arbitrary(u)?);
+        let destination_type = <PlaintextType<N> as arbitrary::Arbitrary>::arbitrary(u)?;
+
+        Ok(Self { operands, destination, destination_type })
+    }
 }
 
 impl<N: Network, const VARIANT: u8> HashInstruction<N, VARIANT> {

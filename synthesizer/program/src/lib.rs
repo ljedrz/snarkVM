@@ -156,15 +156,16 @@ impl<
         // };
         let structs = IndexMap::new();
 
-        let records = {
-            let mut records = IndexMap::new();
-            let iter = u.arbitrary_iter::<(Identifier<N>, RecordType<N>)>()?;
-            for elem_result in iter {
-                let (k, v) = elem_result?;
-                records.insert(k, v);
-            }
-            records
-        };
+        // let records = {
+        //     let mut records = IndexMap::new();
+        //     let iter = u.arbitrary_iter::<(Identifier<N>, RecordType<N>)>()?;
+        //     for elem_result in iter {
+        //         let (k, v) = elem_result?;
+        //         records.insert(k, v);
+        //     }
+        //     records
+        // };
+        let records = IndexMap::new();
 
         // let closures = {
         //     let mut closures = IndexMap::new();

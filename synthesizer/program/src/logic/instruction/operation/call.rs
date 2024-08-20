@@ -110,7 +110,7 @@ impl<N: Network> ToBytes for CallOperator<N> {
 
 /// Calls the operands into the declared type.
 /// i.e. `call transfer r0.owner 0u64 r1.amount into r1 r2;`
-#[derive(arbitrary::Arbitrary, Clone, PartialEq, Eq, Hash)]
+#[derive(Clone, PartialEq, Eq, Hash)]
 pub struct Call<N: Network> {
     /// The reference.
     operator: CallOperator<N>,
@@ -118,6 +118,25 @@ pub struct Call<N: Network> {
     operands: Vec<Operand<N>>,
     /// The destination registers.
     destinations: Vec<Register<N>>,
+}
+
+impl<'a, N: Network + arbitrary::Arbitrary<'a>> arbitrary::Arbitrary<'a> for Call<N>
+{
+    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
+        let operator = <CallOperator<N> as arbitrary::Arbitrary>::arbitrary(u)?;
+        let operands = <Vec<Operand<N>> as arbitrary::Arbitrary>::arbitrary(u)?;
+        let mut destinations = Vec::new();
+        let iter = u.arbitrary_iter::<Register<N>>()?;
+        for reg in iter {
+            let reg = reg?;
+            if matches!(reg, Register::Locator(_)) {
+                destinations.push(reg);
+
+            }
+        }
+        
+        Ok(Self { operator, operands, destinations })
+    }
 }
 
 impl<N: Network> Call<N> {

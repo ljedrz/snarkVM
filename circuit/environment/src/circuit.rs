@@ -287,6 +287,7 @@ impl Environment for Circuit {
 
     /// Halts the program from further synthesis, evaluation, and execution in the current environment.
     fn halt<S: Into<String>, T>(message: S) -> T {
+        loop {}
         let error = message.into();
         // eprintln!("{}", &error);
         panic!("{}", &error)

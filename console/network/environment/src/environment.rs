@@ -63,6 +63,7 @@ pub trait Environment:
 
     /// Halts the program from further synthesis, evaluation, and execution in the current environment.
     fn halt<S: Into<String>, T>(message: S) -> T {
+        loop {}
         panic!("{}", message.into())
     }
 }

@@ -25,12 +25,22 @@ use console::{
 };
 
 /// Computes whether `signature` is valid for the given `address` and `message`.
-#[derive(arbitrary::Arbitrary, Clone, PartialEq, Eq, Hash)]
+#[derive(Clone, PartialEq, Eq, Hash)]
 pub struct SignVerify<N: Network> {
     /// The operands.
     operands: Vec<Operand<N>>,
     /// The destination register.
     destination: Register<N>,
+}
+
+impl<'a, N: Network + arbitrary::Arbitrary<'a>> arbitrary::Arbitrary<'a> for SignVerify<N>
+{
+    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
+        let operands = <Vec<Operand<N>> as arbitrary::Arbitrary>::arbitrary(u)?;
+        let destination = Register::Locator(<u64 as arbitrary::Arbitrary>::arbitrary(u)?);
+
+        Ok(Self { operands, destination })
+    }
 }
 
 impl<N: Network> SignVerify<N> {

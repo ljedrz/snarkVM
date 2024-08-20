@@ -32,7 +32,7 @@ pub type BinaryLiteral<N, O> = Literals<N, O, 2>;
 /// A ternary literal operation.
 pub type TernaryLiteral<N, O> = Literals<N, O, 3>;
 
-#[derive(arbitrary::Arbitrary, Clone, PartialEq, Eq, Hash)]
+#[derive(Clone, PartialEq, Eq, Hash)]
 pub struct Literals<N: Network, O: Operation<N, Literal<N>, LiteralType, NUM_OPERANDS>, const NUM_OPERANDS: usize> {
     /// The operands.
     operands: Vec<Operand<N>>,
@@ -40,6 +40,16 @@ pub struct Literals<N: Network, O: Operation<N, Literal<N>, LiteralType, NUM_OPE
     destination: Register<N>,
     /// PhantomData.
     _phantom: PhantomData<O>,
+}
+
+impl<'a, N: Network + arbitrary::Arbitrary<'a>, O: Operation<N, Literal<N>, LiteralType, NUM_OPERANDS>, const NUM_OPERANDS: usize> arbitrary::Arbitrary<'a> for Literals<N, O, NUM_OPERANDS>
+{
+    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
+        let operands = <Vec<Operand<N>> as arbitrary::Arbitrary>::arbitrary(u)?;
+        let destination = Register::Locator(<u64 as arbitrary::Arbitrary>::arbitrary(u)?);
+
+        Ok(Self { operands, destination, _phantom: PhantomData })
+    }
 }
 
 impl<N: Network, O: Operation<N, Literal<N>, LiteralType, NUM_OPERANDS>, const NUM_OPERANDS: usize>

@@ -17,16 +17,36 @@ mod parse;
 
 use crate::Operand;
 
-use console::{network::prelude::*, program::ValueType};
+use console::{
+    network::prelude::*, 
+    program::{Literal, ProgramID, Register, ValueType},
+};
 
 /// An output statement defines an output of a function.
 ///  An output statement is of the form `output {operand} as {value_type};`.
-#[derive(arbitrary::Arbitrary, Clone, PartialEq, Eq, Hash)]
+#[derive(Clone, PartialEq, Eq, Hash)]
 pub struct Output<N: Network> {
     /// The output operand.
     operand: Operand<N>,
     /// The output value type.
     value_type: ValueType<N>,
+}
+
+impl<'a, N: Network + arbitrary::Arbitrary<'a>> arbitrary::Arbitrary<'a> for Output<N>
+{
+    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
+        let operand = match <u8 as arbitrary::Arbitrary>::arbitrary(u)? % 5 {
+            0 => Operand::Literal(<Literal<N> as arbitrary::Arbitrary>::arbitrary(u)?),
+            1 => Operand::Register(<Register<N> as arbitrary::Arbitrary>::arbitrary(u)?),
+            2 => Operand::ProgramID(<ProgramID<N> as arbitrary::Arbitrary>::arbitrary(u)?),
+            3 => Operand::Signer,
+            4 => Operand::Caller,
+            _ => unreachable!(),
+        };
+        let value_type = <ValueType<N> as arbitrary::Arbitrary>::arbitrary(u)?;
+
+        Ok(Self { operand, value_type })
+    }
 }
 
 impl<N: Network> Output<N> {

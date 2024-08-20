@@ -12,29 +12,39 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::str::FromStr;
-use snarkvm::prelude::{MainnetV0 as CurrentNetwork, FromBytes, PrivateKey, Process, Program, TestRng, ToBytes, Value};
+use snarkvm::prelude::{MainnetV0 as CurrentNetwork, Network, PrivateKey, Process, Program, TestRng, Value};
 
 use afl;
 
 type CurrentAleo = snarkvm::circuit::network::AleoV0;
 
+struct ProgramWithInputs<N: Network> {
+    program: Program<N>,
+    inputs: Vec<Value<N>>,
+}
+
+impl<'a, N: Network + arbitrary::Arbitrary<'a>> arbitrary::Arbitrary<'a> for ProgramWithInputs<N>
+{
+    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
+        let program = <Program<N> as arbitrary::Arbitrary>::arbitrary(u)?;
+        let expected_input_count = program.functions()[0].inputs().len();
+
+        let mut inputs = Vec::new();
+        for _ in 0..expected_input_count {
+            let input = <Value<N> as arbitrary::Arbitrary>::arbitrary(u)?;
+            inputs.push(input);
+        }
+
+        Ok(Self { program, inputs })
+    }
+}
+
 fn main() {
     let rng = &mut TestRng::fixed(7777777);
     let private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
 
-    afl::fuzz_nohook!(|program_inputs: (Program<CurrentNetwork>, Option<Vec<Value<CurrentNetwork>>>)| {
-        let (program, inputs) = program_inputs;
-
-        let inputs = inputs.unwrap_or_default();
-
-        if inputs.len() > 2 {
-            return;
-        }
-
-        if program.functions()[0].inputs().len() != inputs.len() {
-            return;
-        }
+    afl::fuzz_nohook!(|program_inputs: ProgramWithInputs<CurrentNetwork>| {
+        let ProgramWithInputs { program, inputs } = program_inputs;
 
         let mut process = Process::load().unwrap();
         if process.add_program(&program).is_err() {

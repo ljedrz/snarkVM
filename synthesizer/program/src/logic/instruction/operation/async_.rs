@@ -29,7 +29,7 @@ use console::{
 };
 
 /// Invokes the asynchronous call on the operands, producing a future.
-#[derive(arbitrary::Arbitrary, Clone, PartialEq, Eq, Hash)]
+#[derive(Clone, PartialEq, Eq, Hash)]
 pub struct Async<N: Network> {
     /// The function name.
     function_name: Identifier<N>,
@@ -37,6 +37,17 @@ pub struct Async<N: Network> {
     operands: Vec<Operand<N>>,
     /// The destination register.
     destination: Register<N>,
+}
+
+impl<'a, N: Network + arbitrary::Arbitrary<'a>> arbitrary::Arbitrary<'a> for Async<N>
+{
+    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
+        let function_name = <Identifier<N> as arbitrary::Arbitrary>::arbitrary(u)?;
+        let operands = <Vec<Operand<N>> as arbitrary::Arbitrary>::arbitrary(u)?;
+        let destination = Register::Locator(<u64 as arbitrary::Arbitrary>::arbitrary(u)?);
+
+        Ok(Self { function_name, operands, destination })
+    }
 }
 
 impl<N: Network> Async<N> {

@@ -34,12 +34,22 @@ enum Variant {
 }
 
 /// Computes an equality operation on two operands, and stores the outcome in `destination`.
-#[derive(arbitrary::Arbitrary, Clone, PartialEq, Eq, Hash)]
+#[derive(Clone, PartialEq, Eq, Hash)]
 pub struct IsInstruction<N: Network, const VARIANT: u8> {
     /// The operands.
     operands: Vec<Operand<N>>,
     /// The destination register.
     destination: Register<N>,
+}
+
+impl<'a, N: Network + arbitrary::Arbitrary<'a>, const VARIANT: u8> arbitrary::Arbitrary<'a> for IsInstruction<N, VARIANT>
+{
+    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
+        let operands = <Vec<Operand<N>> as arbitrary::Arbitrary>::arbitrary(u)?;
+        let destination = Register::Locator(<u64 as arbitrary::Arbitrary>::arbitrary(u)?);
+
+        Ok(Self { operands, destination })
+    }
 }
 
 impl<N: Network, const VARIANT: u8> IsInstruction<N, VARIANT> {

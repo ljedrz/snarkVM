@@ -181,7 +181,7 @@ impl<E: PairingEngine> LagrangeBasis<'_, E> {
 }
 
 /// `VerifierKey` is used to check evaluation proofs for a given commitment.
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
 pub struct VerifierKey<E: PairingEngine> {
     /// The generator of G1.
     pub g: E::G1Affine,

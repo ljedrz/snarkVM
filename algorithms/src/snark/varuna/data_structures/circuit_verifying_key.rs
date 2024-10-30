@@ -32,7 +32,7 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer, de};
 use std::cmp::Ordering;
 
 /// Verification key for a specific index (i.e., R1CS matrices).
-#[derive(Debug, Clone, PartialEq, Eq, CanonicalSerialize, CanonicalDeserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, CanonicalSerialize, CanonicalDeserialize, Hash)]
 pub struct CircuitVerifyingKey<E: PairingEngine> {
     /// Stores information about the size of the circuit, as well as its defined field.
     pub circuit_info: CircuitInfo,

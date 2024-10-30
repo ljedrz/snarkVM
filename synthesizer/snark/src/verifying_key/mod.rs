@@ -21,7 +21,7 @@ mod serialize;
 
 use std::collections::BTreeMap;
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq, Hash)]
 pub struct VerifyingKey<N: Network> {
     /// The verifying key for the function.
     verifying_key: Arc<varuna::CircuitVerifyingKey<N::PairingCurve>>,

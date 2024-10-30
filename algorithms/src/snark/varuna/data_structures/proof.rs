@@ -32,7 +32,7 @@ use snarkvm_utilities::{
 
 use std::collections::BTreeMap;
 
-#[derive(Clone, Debug, PartialEq, Eq, CanonicalSerialize, CanonicalDeserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, CanonicalSerialize, CanonicalDeserialize, Hash)]
 pub struct Commitments<E: PairingEngine> {
     pub witness_commitments: Vec<WitnessCommitments<E>>,
     /// Commitment to the masking polynomial.
@@ -107,13 +107,13 @@ impl<E: PairingEngine> Commitments<E> {
     }
 }
 /// Commitments to the `w` polynomials.
-#[derive(Clone, Debug, PartialEq, Eq, CanonicalSerialize, CanonicalDeserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, CanonicalSerialize, CanonicalDeserialize, Hash)]
 pub struct WitnessCommitments<E: PairingEngine> {
     /// Commitment to the `w` polynomial.
     pub w: sonic_pc::Commitment<E>,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Evaluations<F: PrimeField> {
     /// Evaluation of `g_1` at `beta`.
     pub g_1_eval: F,
@@ -221,7 +221,7 @@ impl<F: PrimeField> Valid for Evaluations<F> {
 }
 
 /// A zkSNARK proof.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Proof<E: PairingEngine> {
     /// The number of instances being proven in this proof.
     batch_sizes: Vec<usize>,

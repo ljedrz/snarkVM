@@ -21,7 +21,7 @@ use snarkvm_utilities::{ToBytes, serialize::*};
 /// Information about the circuit, including the field of definition, the number of
 /// variables, the number of constraints, and the maximum number of non-zero
 /// entries in any of the constraint matrices.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, CanonicalSerialize, CanonicalDeserialize)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, CanonicalSerialize, CanonicalDeserialize, Hash)]
 pub struct CircuitInfo {
     /// The number of public inputs after padding.
     pub num_public_inputs: usize,

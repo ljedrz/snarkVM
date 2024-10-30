@@ -657,7 +657,7 @@ pub fn evaluate_query_set<'a, F: PrimeField>(
 }
 
 /// A proof of satisfaction of linear combinations.
-#[derive(Clone, Debug, PartialEq, Eq, CanonicalSerialize, CanonicalDeserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, CanonicalSerialize, CanonicalDeserialize, Hash)]
 pub struct BatchLCProof<E: PairingEngine> {
     /// Evaluation proof.
     pub proof: BatchProof<E>,

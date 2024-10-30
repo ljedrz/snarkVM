@@ -19,7 +19,7 @@ mod bytes;
 mod parse;
 mod serialize;
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq, Hash)]
 pub struct Proof<N: Network> {
     /// The proof.
     proof: varuna::Proof<N::PairingCurve>,

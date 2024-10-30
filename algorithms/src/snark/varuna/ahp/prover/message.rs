@@ -19,7 +19,7 @@ use crate::snark::varuna::{CircuitId, verifier::BatchCombiners};
 use snarkvm_fields::PrimeField;
 use snarkvm_utilities::{ToBytes, Write, error, serialize::*};
 
-#[derive(Clone, Debug, Default, PartialEq, Eq, CanonicalSerialize, CanonicalDeserialize)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, CanonicalSerialize, CanonicalDeserialize, Hash)]
 pub struct MatrixSums<F: PrimeField> {
     pub sum_a: F,
     pub sum_b: F,
@@ -34,7 +34,7 @@ impl<F: PrimeField> MatrixSums<F> {
 }
 
 /// The prover message in the third round.
-#[derive(Clone, Debug, Default, PartialEq, Eq, CanonicalSerialize, CanonicalDeserialize)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, CanonicalSerialize, CanonicalDeserialize, Hash)]
 pub struct ThirdMessage<F: PrimeField> {
     pub sums: Vec<Vec<MatrixSums<F>>>,
 }
@@ -63,7 +63,7 @@ impl<F: PrimeField> ToBytes for ThirdMessage<F> {
 }
 
 /// The prover message in the fourth round.
-#[derive(Clone, Debug, Default, PartialEq, Eq, CanonicalSerialize, CanonicalDeserialize)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, CanonicalSerialize, CanonicalDeserialize, Hash)]
 pub struct FourthMessage<F: PrimeField> {
     pub sums: Vec<MatrixSums<F>>,
 }

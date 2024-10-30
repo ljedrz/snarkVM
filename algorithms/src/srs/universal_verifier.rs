@@ -19,7 +19,7 @@ use snarkvm_curves::{PairingCurve, PairingEngine};
 use std::{collections::BTreeMap, sync::Arc};
 
 /// `UniversalVerifier` is used to check evaluation proofs for a given commitment.
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
 pub struct UniversalVerifier<E: PairingEngine> {
     /// The verification key for the underlying KZG10 scheme.
     pub vk: kzg10::VerifierKey<E>,

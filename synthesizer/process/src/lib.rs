@@ -281,12 +281,41 @@ impl<N: Network> Process<N> {
         &self.universal_srs
     }
 
-    /// Returns `true` if the process contains the program with the given ID.
+    /// Returns `true` if the process or storage contains the program with the given ID.
     #[inline]
     pub fn contains_program(&self, program_id: &ProgramID<N>) -> bool {
+        // Check if the program ID is 'credits.aleo'.
         if self.credits.as_ref().map_or(false, |stack| stack.program_id() == program_id) {
             return true;
         }
+        // Check if the program ID exists in the cache.
+        if self.stacks.lock().contains(program_id) {
+            return true;
+        }
+        debug!("Checking storage for program ID: {program_id}");
+        // Retrieve the stores.
+        if let Some(store) = self.store.as_ref() {
+            let transaction_store = store.transaction_store();
+            let deployment_store = transaction_store.deployment_store();
+            // Check if the program ID exists in the storage.
+            match deployment_store.find_transaction_id_from_program_id(&program_id) {
+                Ok(Some(_)) => return true,
+                Ok(None) => debug!("Program ID not found in storage"),
+                Err(err) => debug!("Could not retrieve transaction ID for program ID: {err}"),
+            }
+        }
+
+        false
+    }
+
+    /// Returns `true` if the process contains the program with the given ID.
+    #[inline]
+    pub fn contains_program_in_memory(&self, program_id: &ProgramID<N>) -> bool {
+        // Check if the program ID is 'credits.aleo'.
+        if self.credits.as_ref().map_or(false, |stack| stack.program_id() == program_id) {
+            return true;
+        }
+        // Check if the program ID exists in the cache.
         self.stacks.lock().contains(program_id)
     }
 
@@ -323,8 +352,8 @@ impl<N: Network> Process<N> {
         if program_id == ProgramID::<N>::from_str("credits.aleo")? {
             return self.credits.clone().ok_or_else(|| anyhow!("Failed to get stack for 'credits.aleo'"));
         }
-        // Maybe lazy load the stack
-        if !self.contains_program(&program_id) {
+        // Lazy load the stack if its not in memory yet.
+        if !self.contains_program_in_memory(&program_id) {
             self.load_stack(program_id)?;
         }
         // Retrieve the stack.
@@ -421,7 +450,7 @@ fn load_deployment_and_imports<N: Network, T: TransactionStorage<N>>(
     let program_id = program.id();
 
     // Return early if the program is already loaded.
-    if process.contains_program(program_id) {
+    if process.contains_program_in_memory(program_id) {
         return Ok(vec![]);
     }
 
@@ -431,7 +460,7 @@ fn load_deployment_and_imports<N: Network, T: TransactionStorage<N>>(
     // Iterate through the program imports.
     for import_program_id in program.imports().keys() {
         // Add the imports to the process if does not exist yet.
-        if !process.contains_program(import_program_id) {
+        if !process.contains_program_in_memory(import_program_id) {
             // Fetch the deployment transaction ID.
             let Some(transaction_id) =
                 transaction_store.deployment_store().find_transaction_id_from_program_id(import_program_id)?

@@ -48,7 +48,7 @@ function compute:
     .unwrap();
     // Initialize a new process.
     let process = crate::test_helpers::sample_process(&program1);
-    assert!(process.contains_program(program1.id()));
+    assert!(process.contains_program_in_memory(program1.id()));
 }
 
 #[test]
@@ -66,7 +66,7 @@ function compute:
     .unwrap();
     // Initialize a new process.
     let mut process = crate::test_helpers::sample_process(&program1);
-    assert!(process.contains_program(program1.id()));
+    assert!(process.contains_program_in_memory(program1.id()));
 
     for i in 2..=<CurrentNetwork as Network>::MAX_STACKS + 1 {
         let source = format!(
@@ -79,16 +79,16 @@ function compute:
     add r0 r1 into r2;
     output r2 as u32.public;"
         );
-        // Program1 should still be cached
-        assert!(process.contains_program(program1.id()));
+        // Program1 should still be cached.
+        assert!(process.contains_program_in_memory(program1.id()));
         let (_, program) = Program::<CurrentNetwork>::parse(&source).unwrap();
         process.add_program(&program).unwrap();
-        assert!(process.contains_program(program.id()));
+        assert!(process.contains_program_in_memory(program.id()));
     }
 
-    // only MAX_STACKS programs are cached, so program1 should be evicted
-    assert!(!process.contains_program(program1.id()));
-    // test we still have credits.aleo
+    // Only MAX_STACKS programs are cached, so program1 should be evicted.
+    assert!(!process.contains_program_in_memory(program1.id()));
+    // Test we still have credits.aleo in memory.
     let credits_id = ProgramID::<CurrentNetwork>::from_str("credits.aleo").unwrap();
-    assert!(process.contains_program(&credits_id));
+    assert!(process.contains_program_in_memory(&credits_id));
 }

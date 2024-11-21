@@ -2899,9 +2899,6 @@ finalize remove_admin:
     println!("Prelim 2 is {}", prelim_2.id());
     let block = ledger.prepare_advance_to_next_beacon_block(&private_key, vec![], vec![], vec![prelim_2], rng).unwrap();
     // Check that the block does not have any aborted transactions.
-    for id in block.aborted_transaction_ids() {
-        println!("Aborted transaction include {}", id);
-    }
     assert!(block.aborted_transaction_ids().is_empty());
     // Check that the block does not have any rejected transactions.
     assert_eq!(block.transactions().num_rejected(), 0);
@@ -2912,14 +2909,28 @@ finalize remove_admin:
     println!("Prelim 3 is {}", prelim_3.id());
     let block = ledger.prepare_advance_to_next_beacon_block(&private_key, vec![], vec![], vec![prelim_3], rng).unwrap();
     // Check that the block does not have any aborted transactions.
-    for id in block.aborted_transaction_ids() {
-        println!("Aborted transaction include {}", id);
-    }
     assert!(block.aborted_transaction_ids().is_empty());
     // Check that the block does not have any rejected transactions.
     assert_eq!(block.transactions().num_rejected(), 0);
     ledger.check_next_block(&block, rng).unwrap();
     ledger.advance_to_next_block(&block).unwrap();
+
+    // Deploy MAX_STACKS dummy deployments to test cache eviction.
+    for i in 0..=<CurrentNetwork as Network>::MAX_STACKS {
+        let program = Program::<CurrentNetwork>::from_str(&format!(
+            r"
+program testing{i}.aleo;
+
+function compute:"
+        )).unwrap();
+        let deployment = ledger.vm.deploy(&private_key, &program, None, 0, None, rng).unwrap();
+        let block = ledger.prepare_advance_to_next_beacon_block(&private_key, vec![], vec![], vec![deployment], rng).unwrap();
+        // Assert that the deployment was accepted.
+        assert!(block.aborted_transaction_ids().is_empty());
+        assert_eq!(block.transactions().num_rejected(), 0);
+        ledger.check_next_block(&block, rng).unwrap();
+        ledger.advance_to_next_block(&block).unwrap();
+    }
 
     // Create a deployment transaction for the first program.
     let deployment_1 = ledger.vm.deploy(&private_key, &program_1, None, 0, None, rng).unwrap();

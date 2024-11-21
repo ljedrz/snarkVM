@@ -2947,6 +2947,7 @@ finalize remove_admin:
     let is_accepted = block.transactions().transaction_ids().contains(&deployment_1_id);
 
     println!("\n\n\n@@@@@@@@@@@");
+    println!("Block height is {:?}", block.height());
     println!("Program fee is {:?}", fee_amount);
     println!("Program deployment is valid - {deployment_is_ok}");
     println!("Program is accepted: {is_accepted}");
@@ -2980,7 +2981,7 @@ finalize remove_admin:
         ledger.advance_to_next_block(&block).unwrap();
     }
 
-    // Create a deployment transaction for the first program.
+    // Create a deployment transaction for the second program.
     let deployment_2 = ledger.vm.deploy(&private_key, &program_2, None, 0, None, rng).unwrap();
     let deployment_2_id = deployment_2.id();
     let deployment_is_ok = ledger.check_transaction_basic(&deployment_2, None, rng).is_ok();
@@ -3006,6 +3007,7 @@ finalize remove_admin:
     let is_accepted = block.transactions().transaction_ids().contains(&deployment_2_id);
 
     println!("\n\n\n@@@@@@@@@@@");
+    println!("Block height is {:?}", block.height());
     println!("Program fee is {:?}", fee_amount);
     println!("Program deployment is valid - {deployment_is_ok}");
     println!("Program is accepted: {is_accepted}");

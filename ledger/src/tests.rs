@@ -2931,6 +2931,7 @@ finalize remove_admin:
     println!("Program fee is {:?}", fee_amount);
     println!("Program deployment is valid - {deployment_is_ok}");
     println!("@@@@@@@@@@@\n\n\n");
+    assert!(deployment_is_ok);
 
     // Create a block.
     let block =
@@ -2951,6 +2952,7 @@ finalize remove_admin:
     println!("Program is accepted: {is_accepted}");
     println!("Program is aborted: {is_aborted}");
     println!("@@@@@@@@@@@\n\n\n");
+    assert!(is_accepted);
 
     // Add 10 dummy transactions executions, 1 each block.
     for i in 0..10 {
@@ -2988,6 +2990,7 @@ finalize remove_admin:
     println!("Program fee is {:?}", fee_amount);
     println!("Program deployment is valid - {deployment_is_ok}");
     println!("@@@@@@@@@@@\n\n\n");
+    assert!(deployment_is_ok);
 
     // Create a block.
     let block =
@@ -3008,6 +3011,7 @@ finalize remove_admin:
     println!("Program is accepted: {is_accepted}");
     println!("Program is aborted: {is_aborted}");
     println!("@@@@@@@@@@@\n\n\n");
+    assert!(is_accepted);
 }
 
 #[test]

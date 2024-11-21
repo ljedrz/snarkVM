@@ -14,14 +14,15 @@
 // limitations under the License.
 
 use crate::{
+    Ledger,
+    RecordsFilter,
     advance::split_candidate_solutions,
     test_helpers::{CurrentAleo, CurrentLedger, CurrentNetwork},
-    Ledger, RecordsFilter,
 };
 use aleo_std::StorageMode;
 use console::{
     account::{Address, PrivateKey},
-    network::{prelude::*, MainnetV0},
+    network::{MainnetV0, prelude::*},
     program::{Entry, Identifier, Literal, Plaintext, ProgramID, Value},
     types::U16,
 };
@@ -29,9 +30,9 @@ use ledger_authority::Authority;
 use ledger_block::{Block, ConfirmedTransaction, Execution, Ratify, Rejected, Transaction};
 use ledger_committee::{Committee, MIN_VALIDATOR_STAKE};
 use ledger_narwhal::{BatchCertificate, BatchHeader, Data, Subdag, Transmission, TransmissionID};
-use ledger_store::{helpers::memory::ConsensusMemory, ConsensusStore};
+use ledger_store::{ConsensusStore, helpers::memory::ConsensusMemory};
 use snarkvm_utilities::try_vm_runtime;
-use synthesizer::{program::Program, vm::VM, Stack};
+use synthesizer::{Stack, program::Program, vm::VM};
 
 use indexmap::{IndexMap, IndexSet};
 use rand::seq::SliceRandom;
@@ -475,10 +476,12 @@ finalize foo:
         assert_eq!(**amount, 100)
     }
     // Ensure that we can't produce a transaction with a record that has insufficient balance to pay for fees.
-    assert!(ledger
-        .vm
-        .execute(&private_key, ("dummy.aleo", "foo"), inputs.clone(), Some(insufficient_record), 0, None, rng)
-        .is_err());
+    assert!(
+        ledger
+            .vm
+            .execute(&private_key, ("dummy.aleo", "foo"), inputs.clone(), Some(insufficient_record), 0, None, rng)
+            .is_err()
+    );
 
     let sufficient_record = records[1].clone();
     // Execute with enough fees.
@@ -1049,10 +1052,13 @@ finalize foo:
     assert_eq!(block.transactions().num_accepted(), 2);
     println!("execution_ids: {:?}", execution_ids);
     assert_eq!(block.transactions().transaction_ids().collect::<Vec<_>>(), vec![&execution_ids[2], &deployment_ids[2]]);
-    assert_eq!(
-        block.aborted_transaction_ids(),
-        &vec![execution_ids[5], execution_ids[4], execution_ids[3], execution_ids[1], deployment_ids[1]]
-    );
+    assert_eq!(block.aborted_transaction_ids(), &vec![
+        execution_ids[5],
+        execution_ids[4],
+        execution_ids[3],
+        execution_ids[1],
+        deployment_ids[1]
+    ]);
 
     // Ensure that verification was not run on aborted deployments.
     let partially_verified_transaction = ledger.vm().partially_verified_transactions().read().clone();
@@ -1805,6 +1811,7 @@ fn test_abort_invalid_transaction() {
 
 #[test]
 fn test_deploy_difference() {
+    println!("CONSENSUS_V2_HEIGHT: {:?}", CurrentNetwork::CONSENSUS_V2_HEIGHT);
     let rng = &mut TestRng::default();
 
     let prelim_program_1 = Program::<CurrentNetwork>::from_str(
@@ -2529,21 +2536,21 @@ mapping requests:
 
 function init:
     input r0 as [address; 5u32].public;
-    assert.neq r0[0] aleo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq3ljyzc;
-    assert.neq r0[1] aleo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq3ljyzc;
-    assert.neq r0[2] aleo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq3ljyzc;
-    assert.neq r0[3] aleo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq3ljyzc;
-    assert.neq r0[4] aleo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq3ljyzc;
-    assert.neq r0[0] r0[1];
-    assert.neq r0[0] r0[2];
-    assert.neq r0[0] r0[3];
-    assert.neq r0[0] r0[4];
-    assert.neq r0[1] r0[2];
-    assert.neq r0[1] r0[3];
-    assert.neq r0[1] r0[4];
-    assert.neq r0[2] r0[3];
-    assert.neq r0[2] r0[4];
-    assert.neq r0[3] r0[4];
+    assert.neq r0[0u32] aleo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq3ljyzc;
+    assert.neq r0[1u32] aleo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq3ljyzc;
+    assert.neq r0[2u32] aleo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq3ljyzc;
+    assert.neq r0[3u32] aleo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq3ljyzc;
+    assert.neq r0[4u32] aleo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq3ljyzc;
+    assert.neq r0[0u32] r0[1u32];
+    assert.neq r0[0u32] r0[2u32];
+    assert.neq r0[0u32] r0[3u32];
+    assert.neq r0[0u32] r0[4u32];
+    assert.neq r0[1u32] r0[2u32];
+    assert.neq r0[1u32] r0[3u32];
+    assert.neq r0[1u32] r0[4u32];
+    assert.neq r0[2u32] r0[3u32];
+    assert.neq r0[2u32] r0[4u32];
+    assert.neq r0[3u32] r0[4u32];
     async init r0 into r1;
     output r1 as multisig_v1.aleo/init.future;
 finalize init:
@@ -2551,25 +2558,25 @@ finalize init:
     contains initialized[1u8] into r1;
     assert.eq r1 false;
     set true into initialized[1u8];
-    set true into admins[r0[0]];
-    set true into admins[r0[1]];
-    set true into admins[r0[2]];
-    set true into admins[r0[3]];
-    set true into admins[r0[4]];
+    set true into admins[r0[0u32]];
+    set true into admins[r0[1u32]];
+    set true into admins[r0[2u32]];
+    set true into admins[r0[3u32]];
+    set true into admins[r0[4u32]];
 
 closure verify_signatures:
     input r0 as Request;
     input r1 as [address; 3u32];
     input r2 as [signature; 3u32];
-    assert.neq r1[0] r1[1];
-    assert.neq r1[0] r1[2];
-    assert.neq r1[1] r1[2];
+    assert.neq r1[0u32] r1[1u32];
+    assert.neq r1[0u32] r1[2u32];
+    assert.neq r1[1u32] r1[2u32];
     hash.bhp256 r0 into r3 as field;
-    sign_verify r2[0] r1[0] r3 into r4;
+    sign.verify r2[0u32] r1[0u32] r3 into r4;
     assert.eq r4 true;
-    sign_verify r2[1] r1[1] r3 into r5;
+    sign.verify r2[1u32] r1[1u32] r3 into r5;
     assert.eq r5 true;
-    sign_verify r2[2] r1[2] r3 into r6;
+    sign.verify r2[2u32] r1[2u32] r3 into r6;
     assert.eq r6 true;
     output r3 as field;
 
@@ -2593,11 +2600,11 @@ finalize change_admin:
     input r1 as address.public;
     input r2 as field.public;
     input r3 as [address; 3u32].public;
-    get admins[r3[0]] into r4;
+    get admins[r3[0u32]] into r4;
     assert.eq r4 true;
-    get admins[r3[1]] into r5;
+    get admins[r3[1u32]] into r5;
     assert.eq r5 true;
-    get admins[r3[2]] into r6;
+    get admins[r3[2u32]] into r6;
     assert.eq r6 true;
     contains requests[r2] into r7;
     assert.eq r7 false;
@@ -2632,11 +2639,11 @@ finalize new_request:
     input r1 as u32.public;
     input r2 as field.public;
     input r3 as [address; 3u32].public;
-    get admins[r3[0]] into r4;
+    get admins[r3[0u32]] into r4;
     assert.eq r4 true;
-    get admins[r3[1]] into r5;
+    get admins[r3[1u32]] into r5;
     assert.eq r5 true;
-    get admins[r3[2]] into r6;
+    get admins[r3[2u32]] into r6;
     assert.eq r6 true;
     contains requests[r2] into r7;
     assert.eq r7 false;
@@ -2657,11 +2664,11 @@ function cancel_request:
 finalize cancel_request:
     input r0 as field.public;
     input r1 as [address; 3u32].public;
-    get admins[r1[0]] into r2;
+    get admins[r1[0u32]] into r2;
     assert.eq r2 true;
-    get admins[r1[1]] into r3;
+    get admins[r1[1u32]] into r3;
     assert.eq r3 true;
-    get admins[r1[2]] into r4;
+    get admins[r1[2u32]] into r4;
     assert.eq r4 true;
     get requests[r0] into r5;
     assert.eq r5.state 0u8;
@@ -2719,6 +2726,8 @@ struct Request:
 struct SetOperatorParams:
     operator as address;
     flag as boolean;
+
+function dummy:
 
 function set_operator:
     input r0 as address.public;
@@ -2778,21 +2787,137 @@ finalize remove_admin:
     )
     .unwrap();
 
+    // `program_2` is the same as `program_1` but with a different name.
+    let program_2 = Program::<CurrentNetwork>::from_str(
+        r"
+        import credits.aleo;
+import staking_v1.aleo;
+import staker_v1_b.aleo;
+import multisig_v1.aleo;
+
+program staker_v2_multisig_b.aleo;
+
+struct Settings:
+    unstake_wait as u32;
+    stake_paused as boolean;
+    global_paused as boolean;
+    max_reward_per_notify as u64;
+    protocol_fee as u16;
+    fee_account as address;
+    fixed_stakers as boolean;
+
+struct Operation:
+    program_id as address;
+    op_type as u8;
+    params as field;
+    op_salt as u64;
+    delay as u32;
+
+struct Request:
+    operation as Operation;
+    multisig as address;
+
+struct SetOperatorParams:
+    operator as address;
+    flag as boolean;
+
+function dummy:
+
+function set_operator:
+    input r0 as address.public;
+    input r1 as boolean.public;
+    input r2 as u64.public;
+    input r3 as [address; 3u32].public;
+    input r4 as [signature; 3u32].private;
+    cast r0 r1 into r5 as SetOperatorParams;
+    hash.bhp256 r5 into r6 as field;
+    cast staker_v2_multisig_b.aleo 3u8 r6 r2 0u32 into r7 as Operation;
+    call multisig_v1.aleo/new_request r7 true r3 r4 into r8;
+    call staker_v1_b.aleo/set_operator r0 r1 into r9;
+    async set_operator r8 r9 into r10;
+    output r10 as staker_v2_multisig_b.aleo/set_operator.future;
+
+finalize set_operator:
+    input r0 as multisig_v1.aleo/new_request.future;
+    input r1 as staker_v1_b.aleo/set_operator.future;
+    await r0;
+    await r1;
+
+function add_admin:
+    input r0 as address.public;
+    input r1 as u64.public;
+    hash.bhp256 r0 into r2 as field;
+    cast staker_v2_multisig_b.aleo 1u8 r2 r1 1200u32 into r3 as Operation;
+    call multisig_v1.aleo/execute r3 into r4;
+    call staker_v1_b.aleo/set_admin r0 true into r5;
+    async add_admin r4 r5 into r6;
+    output r6 as staker_v2_multisig_b.aleo/add_admin.future;
+
+finalize add_admin:
+    input r0 as multisig_v1.aleo/execute.future;
+    input r1 as staker_v1_b.aleo/set_admin.future;
+    await r0;
+    await r1;
+
+function remove_admin:
+    input r0 as address.public;
+    input r1 as u64.public;
+    input r2 as [address; 3u32].public;
+    input r3 as [signature; 3u32].private;
+    assert.neq self.caller r0 ;
+    hash.bhp256 r0 into r4 as field;
+    cast staker_v2_multisig_b.aleo 2u8 r4 r1 0u32 into r5 as Operation;
+    call multisig_v1.aleo/new_request r5 true r2 r3 into r6;
+    call staker_v1_b.aleo/set_admin r0 false into r7;
+    async remove_admin r6 r7 into r8;
+    output r8 as staker_v2_multisig_b.aleo/remove_admin.future;
+
+finalize remove_admin:
+    input r0 as multisig_v1.aleo/new_request.future;
+    input r1 as staker_v1_b.aleo/set_admin.future;
+    await r0;
+    await r1;
+        ",
+    )
+    .unwrap();
+
     // Initialize the test environment.
-    let crate::test_helpers::TestEnv { ledger, private_key, view_key, .. } = crate::test_helpers::sample_test_env(rng);
+    let crate::test_helpers::TestEnv { ledger, private_key, .. } = crate::test_helpers::sample_test_env(rng);
 
     //PRELIM PROGRAMS:
 
     let prelim_1 = ledger.vm.deploy(&private_key, &prelim_program_1, None, 0, None, rng).unwrap();
     let block = ledger.prepare_advance_to_next_beacon_block(&private_key, vec![], vec![], vec![prelim_1], rng).unwrap();
+    // Check that the block does not have any aborted transactions.
+    assert!(block.aborted_transaction_ids().is_empty());
+    // Check that the block does not have any rejected transactions.
+    assert_eq!(block.transactions().num_rejected(), 0);
     ledger.check_next_block(&block, rng).unwrap();
     ledger.advance_to_next_block(&block).unwrap();
 
     let prelim_2 = ledger.vm.deploy(&private_key, &prelim_program_2, None, 0, None, rng).unwrap();
+    println!("Prelim 2 is {}", prelim_2.id());
+    let block = ledger.prepare_advance_to_next_beacon_block(&private_key, vec![], vec![], vec![prelim_2], rng).unwrap();
+    // Check that the block does not have any aborted transactions.
+    for id in block.aborted_transaction_ids() {
+        println!("Aborted transaction include {}", id);
+    }
+    assert!(block.aborted_transaction_ids().is_empty());
+    // Check that the block does not have any rejected transactions.
+    assert_eq!(block.transactions().num_rejected(), 0);
+    ledger.check_next_block(&block, rng).unwrap();
+    ledger.advance_to_next_block(&block).unwrap();
+
     let prelim_3 = ledger.vm.deploy(&private_key, &prelim_program_3, None, 0, None, rng).unwrap();
-    let block = ledger
-        .prepare_advance_to_next_beacon_block(&private_key, vec![], vec![], vec![prelim_2, prelim_3], rng)
-        .unwrap();
+    println!("Prelim 3 is {}", prelim_3.id());
+    let block = ledger.prepare_advance_to_next_beacon_block(&private_key, vec![], vec![], vec![prelim_3], rng).unwrap();
+    // Check that the block does not have any aborted transactions.
+    for id in block.aborted_transaction_ids() {
+        println!("Aborted transaction include {}", id);
+    }
+    assert!(block.aborted_transaction_ids().is_empty());
+    // Check that the block does not have any rejected transactions.
+    assert_eq!(block.transactions().num_rejected(), 0);
     ledger.check_next_block(&block, rng).unwrap();
     ledger.advance_to_next_block(&block).unwrap();
 
@@ -2819,6 +2944,63 @@ finalize remove_admin:
 
     let is_aborted = block.aborted_transaction_ids().contains(&deployment_1_id);
     let is_accepted = block.transactions().transaction_ids().contains(&deployment_1_id);
+
+    println!("\n\n\n@@@@@@@@@@@");
+    println!("Program fee is {:?}", fee_amount);
+    println!("Program deployment is valid - {deployment_is_ok}");
+    println!("Program is accepted: {is_accepted}");
+    println!("Program is aborted: {is_aborted}");
+    println!("@@@@@@@@@@@\n\n\n");
+
+    // Add 10 dummy transactions executions, 1 each block.
+    for i in 0..10 {
+        println!("Adding dummy transaction {}", i);
+        let dummy_execution = ledger
+            .vm
+            .execute(
+                &private_key,
+                ("staker_v1_multisig_b.aleo", "dummy"),
+                Vec::<Value<CurrentNetwork>>::new().iter(),
+                None,
+                0,
+                None,
+                rng,
+            )
+            .unwrap();
+        let block = ledger
+            .prepare_advance_to_next_beacon_block(&private_key, vec![], vec![], vec![dummy_execution], rng)
+            .unwrap();
+        // Check that the block does not have any aborted transactions.
+        assert!(block.aborted_transaction_ids().is_empty());
+        // Check that the block does not have any rejected transactions.
+        assert_eq!(block.transactions().num_rejected(), 0);
+        ledger.check_next_block(&block, rng).unwrap();
+        ledger.advance_to_next_block(&block).unwrap();
+    }
+
+    // Create a deployment transaction for the first program.
+    let deployment_2 = ledger.vm.deploy(&private_key, &program_2, None, 0, None, rng).unwrap();
+    let deployment_2_id = deployment_2.id();
+    let deployment_is_ok = ledger.check_transaction_basic(&deployment_2, None, rng).is_ok();
+    let fee_amount = deployment_2.fee_amount().unwrap();
+
+    println!("\n\n\n@@@@@@@@@@@");
+    println!("Program fee is {:?}", fee_amount);
+    println!("Program deployment is valid - {deployment_is_ok}");
+    println!("@@@@@@@@@@@\n\n\n");
+
+    // Create a block.
+    let block =
+        ledger.prepare_advance_to_next_beacon_block(&private_key, vec![], vec![], vec![deployment_2], rng).unwrap();
+
+    // Check that the next block is valid.
+    ledger.check_next_block(&block, rng).unwrap();
+
+    // Add the block to the ledger.
+    ledger.advance_to_next_block(&block).unwrap();
+
+    let is_aborted = block.aborted_transaction_ids().contains(&deployment_2_id);
+    let is_accepted = block.transactions().transaction_ids().contains(&deployment_2_id);
 
     println!("\n\n\n@@@@@@@@@@@");
     println!("Program fee is {:?}", fee_amount);

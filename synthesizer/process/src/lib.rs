@@ -169,70 +169,65 @@ impl<N: Network> Process<N> {
     }
 }
 
+macro_rules! impl_load_from_store {
+    ($store_type:ty) => {
+        /// Initializes a new process.
+        pub fn load_from_store(store: $store_type) -> Result<Self> {
+            let timer = timer!("Process::load_from_storage");
+
+            // Initialize the process.
+            let mut process = Self {
+                universal_srs: Arc::new(UniversalSRS::load()?),
+                credits: None,
+                stacks: Arc::new(Mutex::new(LruCache::new(NonZeroUsize::new(N::MAX_STACKS).unwrap()))),
+                store: Some(store),
+            };
+            lap!(timer, "Initialize process");
+
+            // Initialize the 'credits.aleo' program.
+            let program = Program::credits()?;
+            lap!(timer, "Load credits program");
+
+            // Compute the 'credits.aleo' program stack.
+            let stack = Stack::new(&process, &program)?;
+            lap!(timer, "Initialize stack");
+
+            // Synthesize the 'credits.aleo' verifying keys.
+            for function_name in program.functions().keys() {
+                // Load the verifying key.
+                let verifying_key = N::get_credits_verifying_key(function_name.to_string())?;
+                // Retrieve the number of public and private variables.
+                // Note: This number does *NOT* include the number of constants. This is safe because
+                // this program is never deployed, as it is a first-class citizen of the protocol.
+                let num_variables = verifying_key.circuit_info.num_public_and_private_variables as u64;
+                // Insert the verifying key.
+                stack.insert_verifying_key(function_name, VerifyingKey::new(verifying_key.clone(), num_variables))?;
+                lap!(timer, "Load verifying key for {function_name}");
+            }
+            lap!(timer, "Load circuit keys");
+
+            // Add the stack to the process.
+            process.credits = Some(Arc::new(stack));
+
+            finish!(timer, "Process::load_from_storage");
+            // Return the process.
+            Ok(process)
+        }
+    };
+}
+
 impl<N: Network> Process<N> {
+    #[cfg(feature = "rocks")]
+    impl_load_from_store!(ConsensusStore<N, ConsensusDB<N>>);
+
+    #[cfg(not(feature = "rocks"))]
+    impl_load_from_store!(ConsensusStore<N, ConsensusMemory<N>>);
+
     /// Initializes a new process.
     /// Assumption: this is only called in test code.
     #[inline]
     pub fn load_testing_only() -> Result<Self> {
-        Process::load_from_storage(Some(aleo_std::StorageMode::Development(0)))
-    }
-
-    /// Initializes a new process.
-    #[inline]
-    pub fn load_from_storage(storage_mode: Option<StorageMode>) -> Result<Self> {
-        let timer = timer!("Process::load_from_storage");
-
-        debug!("Opening storage");
-        let storage_mode = storage_mode.clone().ok_or_else(|| anyhow!("Failed to get storage mode"))?;
-        // try to lazy load the stack
-        #[cfg(feature = "rocks")]
-        let store = ConsensusStore::<N, ConsensusDB<N>>::open(storage_mode);
-        #[cfg(not(feature = "rocks"))]
-        let store = ConsensusStore::<N, ConsensusMemory<N>>::open(storage_mode);
-
-        let store = match store {
-            Ok(store) => store,
-            Err(e) => bail!("Failed to load ledger (run 'snarkos clean' and try again)\n\n{e}\n"),
-        };
-        debug!("Opened storage");
-
-        // Initialize the process.
-        let mut process = Self {
-            universal_srs: Arc::new(UniversalSRS::load()?),
-            credits: None,
-            stacks: Arc::new(Mutex::new(LruCache::new(NonZeroUsize::new(N::MAX_STACKS).unwrap()))),
-            store: Some(store),
-        };
-        lap!(timer, "Initialize process");
-
-        // Initialize the 'credits.aleo' program.
-        let program = Program::credits()?;
-        lap!(timer, "Load credits program");
-
-        // Compute the 'credits.aleo' program stack.
-        let stack = Stack::new(&process, &program)?;
-        lap!(timer, "Initialize stack");
-
-        // Synthesize the 'credits.aleo' verifying keys.
-        for function_name in program.functions().keys() {
-            // Load the verifying key.
-            let verifying_key = N::get_credits_verifying_key(function_name.to_string())?;
-            // Retrieve the number of public and private variables.
-            // Note: This number does *NOT* include the number of constants. This is safe because
-            // this program is never deployed, as it is a first-class citizen of the protocol.
-            let num_variables = verifying_key.circuit_info.num_public_and_private_variables as u64;
-            // Insert the verifying key.
-            stack.insert_verifying_key(function_name, VerifyingKey::new(verifying_key.clone(), num_variables))?;
-            lap!(timer, "Load verifying key for {function_name}");
-        }
-        lap!(timer, "Load circuit keys");
-
-        // Add the stack to the process.
-        process.credits = Some(Arc::new(stack));
-
-        finish!(timer, "Process::load_from_storage");
-        // Return the process.
-        Ok(process)
+        Process::load_from_store(ConsensusStore::open(StorageMode::Development(0)).unwrap())
     }
 
     /// Initializes a new process without creating the 'credits.aleo' program.

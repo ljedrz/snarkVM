@@ -73,6 +73,11 @@ use std::{collections::HashSet, num::NonZeroUsize, sync::Arc};
 #[cfg(not(feature = "serial"))]
 use rayon::prelude::*;
 
+#[cfg(not(feature = "rocks"))]
+use ledger_store::helpers::memory::ConsensusMemory;
+#[cfg(feature = "rocks")]
+use ledger_store::helpers::rocksdb::ConsensusDB;
+
 #[derive(Clone)]
 pub struct VM<N: Network, C: ConsensusStorage<N>> {
     /// The process.
@@ -91,37 +96,48 @@ pub struct VM<N: Network, C: ConsensusStorage<N>> {
     block_lock: Arc<Mutex<()>>,
 }
 
-impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
-    /// Initializes the VM from storage.
-    #[inline]
-    pub fn from(store: ConsensusStore<N, C>) -> Result<Self> {
-        // Initialize a new process.
-        let process = Process::load_from_storage(Some(store.storage_mode().clone()))?;
+macro_rules! impl_from_store {
+    ($store_type:ty) => {
+        impl<N: Network> VM<N, $store_type> {
+            /// Initializes the VM from storage.
+            #[inline]
+            pub fn from(store: ConsensusStore<N, $store_type>) -> Result<Self> {
+                // Initialize a new process.
+                let process = Process::load_from_store(store.clone())?;
 
-        // Initialize the store for 'credits.aleo'.
-        let credits = Program::<N>::credits()?;
-        for mapping in credits.mappings().values() {
-            // Ensure that all mappings are initialized.
-            if !store.finalize_store().contains_mapping_confirmed(credits.id(), mapping.name())? {
-                // Initialize the mappings for 'credits.aleo'.
-                store.finalize_store().initialize_mapping(*credits.id(), *mapping.name())?;
+                // Initialize the store for 'credits.aleo'.
+                let credits = Program::<N>::credits()?;
+                for mapping in credits.mappings().values() {
+                    // Ensure that all mappings are initialized.
+                    if !store.finalize_store().contains_mapping_confirmed(credits.id(), mapping.name())? {
+                        // Initialize the mappings for 'credits.aleo'.
+                        store.finalize_store().initialize_mapping(*credits.id(), *mapping.name())?;
+                    }
+                }
+
+                // Return the new VM.
+                Ok(Self {
+                    process: Arc::new(RwLock::new(process)),
+                    puzzle: Self::new_puzzle()?,
+                    store,
+                    partially_verified_transactions: Arc::new(RwLock::new(LruCache::new(
+                        NonZeroUsize::new(Transactions::<N>::MAX_TRANSACTIONS).unwrap(),
+                    ))),
+                    restrictions: Restrictions::load()?,
+                    atomic_lock: Arc::new(Mutex::new(())),
+                    block_lock: Arc::new(Mutex::new(())),
+                })
             }
         }
+    };
+}
 
-        // Return the new VM.
-        Ok(Self {
-            process: Arc::new(RwLock::new(process)),
-            puzzle: Self::new_puzzle()?,
-            store,
-            partially_verified_transactions: Arc::new(RwLock::new(LruCache::new(
-                NonZeroUsize::new(Transactions::<N>::MAX_TRANSACTIONS).unwrap(),
-            ))),
-            restrictions: Restrictions::load()?,
-            atomic_lock: Arc::new(Mutex::new(())),
-            block_lock: Arc::new(Mutex::new(())),
-        })
-    }
+#[cfg(feature = "rocks")]
+impl_from_store!(ConsensusDB<N>);
+#[cfg(not(feature = "rocks"))]
+impl_from_store!(ConsensusMemory<N>);
 
+impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     /// Returns `true` if a program with the given program ID exists.
     #[inline]
     pub fn contains_program(&self, program_id: &ProgramID<N>) -> bool {

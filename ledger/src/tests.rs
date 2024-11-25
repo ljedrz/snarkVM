@@ -2922,9 +2922,11 @@ finalize remove_admin:
 program testing{i}.aleo;
 
 function compute:"
-        )).unwrap();
+        ))
+        .unwrap();
         let deployment = ledger.vm.deploy(&private_key, &program, None, 0, None, rng).unwrap();
-        let block = ledger.prepare_advance_to_next_beacon_block(&private_key, vec![], vec![], vec![deployment], rng).unwrap();
+        let block =
+            ledger.prepare_advance_to_next_beacon_block(&private_key, vec![], vec![], vec![deployment], rng).unwrap();
         // Assert that the deployment was accepted.
         assert!(block.aborted_transaction_ids().is_empty());
         assert_eq!(block.transactions().num_rejected(), 0);

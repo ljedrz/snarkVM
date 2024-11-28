@@ -589,7 +589,7 @@ impl<N: Network> RegisterTypes<N> {
                 ),
                 _ => bail!("Instruction '{instruction}' is not for opcode '{opcode}'."),
             },
-            Opcode::Sign => {
+            Opcode::Sign | Opcode::VerifyVarunaProof => {
                 // Ensure the instruction has one destination register.
                 ensure!(
                     instruction.destinations().len() == 1,

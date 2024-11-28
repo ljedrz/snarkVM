@@ -29,6 +29,7 @@ aleo-cli = [ "colored" ]
 cuda = [ "snarkvm-algorithms/cuda" ]
 serial = [ "console/serial", "snarkvm-algorithms/serial" ]
 wasm = [ "console/wasm", "snarkvm-algorithms/wasm" ]
+test = [ ]
 
 [dependencies.circuit]
 package = "snarkvm-circuit"

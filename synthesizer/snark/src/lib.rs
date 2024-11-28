@@ -27,7 +27,7 @@ use std::sync::Arc;
 #[cfg(feature = "aleo-cli")]
 use colored::Colorize;
 
-type Varuna<N> = varuna::VarunaSNARK<<N as Environment>::PairingCurve, FiatShamir<N>, varuna::VarunaHidingMode>;
+pub type Varuna<N> = varuna::VarunaSNARK<<N as Environment>::PairingCurve, FiatShamir<N>, varuna::VarunaHidingMode>;
 
 mod certificate;
 pub use certificate::Certificate;
@@ -44,8 +44,8 @@ pub use universal_srs::UniversalSRS;
 mod verifying_key;
 pub use verifying_key::VerifyingKey;
 
-#[cfg(test)]
-pub(crate) mod test_helpers {
+#[cfg(any(test, feature = "test"))]
+pub mod test_helpers {
     use super::*;
     use circuit::{
         environment::{Assignment, Circuit, Eject, Environment, Inject, Mode, One},
@@ -82,7 +82,7 @@ pub(crate) mod test_helpers {
     }
 
     /// Returns a sample assignment for the example circuit.
-    pub(crate) fn sample_assignment() -> Assignment<<Circuit as Environment>::BaseField> {
+    pub fn sample_assignment() -> Assignment<<Circuit as Environment>::BaseField> {
         static INSTANCE: OnceCell<Assignment<<Circuit as Environment>::BaseField>> = OnceCell::new();
         INSTANCE
             .get_or_init(|| {
@@ -98,7 +98,7 @@ pub(crate) mod test_helpers {
     }
 
     /// Returns the sample circuit keys for the example circuit.
-    pub(crate) fn sample_keys() -> (ProvingKey<CurrentNetwork>, VerifyingKey<CurrentNetwork>) {
+    pub fn sample_keys() -> (ProvingKey<CurrentNetwork>, VerifyingKey<CurrentNetwork>) {
         static INSTANCE: OnceCell<(ProvingKey<CurrentNetwork>, VerifyingKey<CurrentNetwork>)> = OnceCell::new();
         INSTANCE
             .get_or_init(|| {
@@ -111,6 +111,7 @@ pub(crate) mod test_helpers {
     }
 
     /// Returns a sample proof for the example circuit.
+    #[allow(dead_code)]
     pub(crate) fn sample_proof() -> Proof<CurrentNetwork> {
         static INSTANCE: OnceCell<Proof<CurrentNetwork>> = OnceCell::new();
         INSTANCE
@@ -123,6 +124,7 @@ pub(crate) mod test_helpers {
     }
 
     /// Returns a sample certificate for the example circuit.
+    #[allow(dead_code)]
     pub(super) fn sample_certificate() -> Certificate<CurrentNetwork> {
         static INSTANCE: OnceCell<Certificate<CurrentNetwork>> = OnceCell::new();
         INSTANCE

@@ -382,6 +382,7 @@ pub fn cost_per_command<N: Network>(
         Command::Instruction(Instruction::SubWrapped(_)) => Ok(500),
         Command::Instruction(Instruction::Ternary(_)) => Ok(500),
         Command::Instruction(Instruction::Xor(_)) => Ok(500),
+        Command::Instruction(Instruction::VerifyVarunaProof(_)) => Ok(todo!()),
         Command::Await(_) => Ok(500),
         Command::Contains(command) => {
             cost_in_size(stack, finalize, [command.key()], MAPPING_PER_BYTE_COST, mapping_base_cost)

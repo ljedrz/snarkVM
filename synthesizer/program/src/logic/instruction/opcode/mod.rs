@@ -38,6 +38,8 @@ pub enum Opcode {
     Literal(&'static str),
     /// The opcode is for signature verification (i.e. `sign.verify`).
     Sign,
+    /// The opcode is for Varuna proof verification.
+    VerifyVarunaProof,
 }
 
 impl Deref for Opcode {
@@ -56,6 +58,7 @@ impl Deref for Opcode {
             Opcode::Is(opcode) => opcode,
             Opcode::Literal(opcode) => opcode,
             Opcode::Sign => &"sign.verify",
+            Opcode::VerifyVarunaProof => &"varuna.verify",
         }
     }
 }
@@ -81,6 +84,7 @@ impl Display for Opcode {
             Self::Is(opcode) => write!(f, "{opcode}"),
             Self::Literal(opcode) => write!(f, "{opcode}"),
             Self::Sign => write!(f, "{}", self.deref()),
+            Self::VerifyVarunaProof => write!(f, "{}", self.deref()),
         }
     }
 }

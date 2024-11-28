@@ -28,6 +28,11 @@ default = [ ]
 serial = [ "console/serial" ]
 wasm = [ "console/wasm" ]
 
+[dependencies.algorithms]
+package = "snarkvm-algorithms"
+path = "../../algorithms"
+version = "=1.0.0"
+
 [dependencies.circuit]
 package = "snarkvm-circuit"
 path = "../../circuit"
@@ -39,6 +44,15 @@ path = "../../console"
 version = "=1.0.0"
 default-features = false
 features = [ "account", "network", "program", "types" ]
+
+[dependencies.snark]
+package = "snarkvm-synthesizer-snark"
+path = "../snark"
+version = "=1.0.0"
+default-features = false
+
+[dependencies.hex]
+version = "0.4"
 
 [dependencies.indexmap]
 version = "2.0"
@@ -67,6 +81,13 @@ features = [ "test" ]
 
 [dev-dependencies.criterion]
 version = "0.5"
+
+[dev-dependencies.snark]
+package = "snarkvm-synthesizer-snark"
+path = "../snark"
+version = "=1.0.0"
+default-features = false
+features = [ "test" ]
 
 [dev-dependencies.synthesizer-process]
 package = "snarkvm-synthesizer-process"

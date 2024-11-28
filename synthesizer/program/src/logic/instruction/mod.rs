@@ -202,6 +202,8 @@ pub enum Instruction<N: Network> {
     Ternary(Ternary<N>),
     /// Performs a bitwise `xor` on `first` and `second`, storing the outcome in `destination`.
     Xor(Xor<N>),
+    /// Verifies the provided Varuna proof.
+    VerifyVarunaProof(VerifyVarunaProof<N>),
 }
 
 /// Creates a match statement that applies the given operation for each instruction.
@@ -301,6 +303,7 @@ macro_rules! instruction {
             SubWrapped,
             Ternary,
             Xor,
+            VerifyVarunaProof,
         }}
     };
     // A variant **without** curly braces:
@@ -471,7 +474,7 @@ mod tests {
         // Sanity check the number of instructions is unchanged.
         // Note that the number of opcodes **MUST NOT** exceed u16::MAX.
         assert_eq!(
-            68,
+            69,
             Instruction::<CurrentNetwork>::OPCODES.len(),
             "Update me if the number of instructions changes."
         );

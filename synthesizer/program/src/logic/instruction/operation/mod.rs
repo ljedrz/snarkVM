@@ -42,6 +42,9 @@ mod macros;
 mod sign_verify;
 pub use sign_verify::*;
 
+mod verify_varuna_proof;
+pub use verify_varuna_proof::*;
+
 use crate::Opcode;
 use console::network::prelude::*;
 

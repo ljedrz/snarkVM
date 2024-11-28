@@ -2958,6 +2958,7 @@ dependencies = [
  "snarkvm-console-network-environment",
  "snarkvm-console-types-address",
  "snarkvm-console-types-boolean",
+ "snarkvm-console-types-bytes",
  "snarkvm-console-types-field",
  "snarkvm-console-types-group",
  "snarkvm-console-types-integers",
@@ -2984,6 +2985,18 @@ dependencies = [
  "bincode",
  "serde_json",
  "snarkvm-console-network-environment",
+]
+
+[[package]]
+name = "snarkvm-console-types-bytes"
+version = "1.0.0"
+dependencies = [
+ "bincode",
+ "hex",
+ "rand",
+ "serde_json",
+ "snarkvm-console-network-environment",
+ "snarkvm-console-types-boolean",
 ]
 
 [[package]]
@@ -3470,14 +3483,17 @@ version = "1.0.0"
 dependencies = [
  "bincode",
  "criterion",
+ "hex",
  "indexmap 2.2.6",
  "paste",
  "rand",
  "rand_chacha",
  "serde_json",
+ "snarkvm-algorithms",
  "snarkvm-circuit",
  "snarkvm-console",
  "snarkvm-synthesizer-process",
+ "snarkvm-synthesizer-snark",
 ]
 
 [[package]]

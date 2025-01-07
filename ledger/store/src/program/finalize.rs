@@ -84,7 +84,7 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
 
     /// Initializes the test-variant of the storage.
     #[cfg(any(test, feature = "test"))]
-    fn open_testing(temp_dir: std::path::PathBuf, dev: Option<u16>) -> Result<Self>;
+    fn open_testing(dev: Option<u16>) -> Result<Self>;
 
     /// Returns the committee storage.
     fn committee_store(&self) -> &CommitteeStore<N, Self::CommitteeStorage>;
@@ -541,8 +541,8 @@ impl<N: Network, P: FinalizeStorage<N>> FinalizeStore<N, P> {
 
     /// Initializes the test-variant of the storage.
     #[cfg(any(test, feature = "test"))]
-    pub fn open_testing(temp_dir: std::path::PathBuf, dev: Option<u16>) -> Result<Self> {
-        Self::from(P::open_testing(temp_dir, dev)?)
+    pub fn open_testing(dev: Option<u16>) -> Result<Self> {
+        Self::from(P::open_testing(dev)?)
     }
 
     /// Initializes a finalize store from storage.
@@ -1301,8 +1301,7 @@ mod tests {
         // Initialize a new finalize store.
         #[cfg(feature = "rocks")]
         let finalize_store = {
-            let temp_dir = tempfile::tempdir().expect("Failed to open temporary directory").into_path();
-            let program_rocksdb = crate::helpers::rocksdb::FinalizeDB::open_testing(temp_dir, None).unwrap();
+            let program_rocksdb = crate::helpers::rocksdb::FinalizeDB::open_testing(None).unwrap();
             FinalizeStore::from(program_rocksdb).unwrap()
         };
 

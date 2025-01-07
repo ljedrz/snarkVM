@@ -45,20 +45,12 @@ const TEST_COMMISSION: u8 = 5;
 macro_rules! sample_finalize_store {
     () => {{
         #[cfg(feature = "rocks")]
-        let temp_dir = tempfile::tempdir().expect("Failed to open temporary directory");
-        #[cfg(not(feature = "rocks"))]
-        let temp_dir = ();
-
-        #[cfg(feature = "rocks")]
-        let store = FinalizeStore::<CurrentNetwork, ledger_store::helpers::rocksdb::FinalizeDB<_>>::open_testing(
-            temp_dir.path().to_owned(),
-            None,
-        )
-        .unwrap();
+        let store =
+            FinalizeStore::<CurrentNetwork, ledger_store::helpers::rocksdb::FinalizeDB<_>>::open_testing(None).unwrap();
         #[cfg(not(feature = "rocks"))]
         let store = FinalizeStore::<CurrentNetwork, FinalizeMemory<_>>::open(None).unwrap();
 
-        (store, temp_dir)
+        store
     }};
 }
 
@@ -464,7 +456,7 @@ fn test_bond_validator_simple() {
     // Construct the process.
     let process = Process::<CurrentNetwork>::load_testing_only().unwrap();
     // Initialize a new finalize store.
-    let (store, _temp_dir) = sample_finalize_store!();
+    let store = sample_finalize_store!();
 
     // Initialize the validators.
     let (validators, _) = initialize_stakers(&store, 1, 0, rng).unwrap();
@@ -519,7 +511,7 @@ fn test_bond_public_with_minimum_bond() {
     // Construct the process.
     let process = Process::<CurrentNetwork>::load_testing_only().unwrap();
     // Initialize a new finalize store.
-    let (store, _temp_dir) = sample_finalize_store!();
+    let store = sample_finalize_store!();
 
     // Initialize the validator and delegator keys
     let validator_private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
@@ -613,7 +605,7 @@ fn test_bond_validator_below_min_stake_fails() {
     // Construct the process.
     let process = Process::<CurrentNetwork>::load_testing_only().unwrap();
     // Initialize a new finalize store.
-    let (store, _temp_dir) = sample_finalize_store!();
+    let store = sample_finalize_store!();
 
     // Initialize the validators.
     let (validators, _) = initialize_stakers(&store, 1, 0, rng).unwrap();
@@ -649,7 +641,7 @@ fn test_bond_validator_same_withdrawal_address_fails() {
     // Construct the process.
     let process = Process::<CurrentNetwork>::load_testing_only().unwrap();
     // Initialize a new finalize store.
-    let (store, _temp_dir) = sample_finalize_store!();
+    let store = sample_finalize_store!();
 
     // Initialize the validators.
     let (validators, _) = initialize_stakers(&store, 1, 0, rng).unwrap();
@@ -685,7 +677,7 @@ fn test_bond_validator_with_insufficient_funds_fails() {
     // Construct the process.
     let process = Process::<CurrentNetwork>::load_testing_only().unwrap();
     // Initialize a new finalize store.
-    let (store, _temp_dir) = sample_finalize_store!();
+    let store = sample_finalize_store!();
 
     // Initialize the validators.
     let (validators, _) = initialize_stakers(&store, 1, 0, rng).unwrap();
@@ -722,7 +714,7 @@ fn test_bond_validator_different_commission_fails() {
     // Construct the process.
     let process = Process::<CurrentNetwork>::load_testing_only().unwrap();
     // Initialize a new finalize store.
-    let (store, _temp_dir) = sample_finalize_store!();
+    let store = sample_finalize_store!();
 
     // Initialize the validators.
     let (validators, _) = initialize_stakers(&store, 1, 0, rng).unwrap();
@@ -790,7 +782,7 @@ fn test_bond_validator_multiple_bonds() {
     // Construct the process.
     let process = Process::<CurrentNetwork>::load_testing_only().unwrap();
     // Initialize a new finalize store.
-    let (store, _temp_dir) = sample_finalize_store!();
+    let store = sample_finalize_store!();
 
     // Initialize the validators.
     let (validators, _) = initialize_stakers(&store, 1, 0, rng).unwrap();
@@ -850,7 +842,7 @@ fn test_bond_validator_to_other_validator_fails() {
     // Construct the process.
     let process = Process::<CurrentNetwork>::load_testing_only().unwrap();
     // Initialize a new finalize store.
-    let (store, _temp_dir) = sample_finalize_store!();
+    let store = sample_finalize_store!();
 
     // Initialize the validators.
     let (validators, _) = initialize_stakers(&store, 2, 0, rng).unwrap();
@@ -936,7 +928,7 @@ fn test_bond_delegator_simple() {
     // Construct the process.
     let process = Process::<CurrentNetwork>::load_testing_only().unwrap();
     // Initialize a new finalize store.
-    let (store, _temp_dir) = sample_finalize_store!();
+    let store = sample_finalize_store!();
 
     // Initialize the validators and delegators.
     let (validators, delegators) = initialize_stakers(&store, 1, 1, rng).unwrap();
@@ -998,7 +990,7 @@ fn test_bond_delegator_below_min_stake_fails() {
     // Construct the process.
     let process = Process::<CurrentNetwork>::load_testing_only().unwrap();
     // Initialize a new finalize store.
-    let (store, _temp_dir) = sample_finalize_store!();
+    let store = sample_finalize_store!();
 
     // Initialize the validators and delegators.
     let (validators, delegators) = initialize_stakers(&store, 1, 1, rng).unwrap();
@@ -1065,7 +1057,7 @@ fn test_bond_delegator_with_insufficient_funds_fails() {
     // Construct the process.
     let process = Process::<CurrentNetwork>::load_testing_only().unwrap();
     // Initialize a new finalize store.
-    let (store, _temp_dir) = sample_finalize_store!();
+    let store = sample_finalize_store!();
 
     // Initialize the validators and delegators.
     let (validators, delegators) = initialize_stakers(&store, 1, 1, rng).unwrap();
@@ -1132,7 +1124,7 @@ fn test_bond_delegator_multiple_bonds() {
     // Construct the process.
     let process = Process::<CurrentNetwork>::load_testing_only().unwrap();
     // Initialize a new finalize store.
-    let (store, _temp_dir) = sample_finalize_store!();
+    let store = sample_finalize_store!();
 
     // Initialize the validators and delegators.
     let (validators, delegators) = initialize_stakers(&store, 1, 1, rng).unwrap();
@@ -1359,7 +1351,7 @@ fn test_bond_delegator_to_multiple_validators_fails() {
     // Construct the process.
     let process = Process::<CurrentNetwork>::load_testing_only().unwrap();
     // Initialize a new finalize store.
-    let (store, _temp_dir) = sample_finalize_store!();
+    let store = sample_finalize_store!();
 
     // Initialize the validators and delegators.
     let (validators, delegators) = initialize_stakers(&store, 2, 1, rng).unwrap();
@@ -1502,7 +1494,7 @@ fn test_unbond_validator() {
     // Construct the process.
     let process = Process::<CurrentNetwork>::load_testing_only().unwrap();
     // Initialize a new finalize store.
-    let (store, _temp_dir) = sample_finalize_store!();
+    let store = sample_finalize_store!();
 
     // Initialize the validators and delegators.
     let (validators, _) = initialize_stakers(&store, 1, 0, rng).unwrap();
@@ -1646,7 +1638,7 @@ fn test_bond_validator_fails_if_unbonding_state() {
     // Construct the process.
     let process = Process::<CurrentNetwork>::load_testing_only().unwrap();
     // Initialize a new finalize store.
-    let (store, _temp_dir) = sample_finalize_store!();
+    let store = sample_finalize_store!();
 
     // Initialize the validators and delegators.
     let (validators, _) = initialize_stakers(&store, 1, 0, rng).unwrap();
@@ -1733,7 +1725,7 @@ fn test_unbond_validator_fails_if_unbonding_beyond_their_stake() {
     // Construct the process.
     let process = Process::<CurrentNetwork>::load_testing_only().unwrap();
     // Initialize a new finalize store.
-    let (store, _temp_dir) = sample_finalize_store!();
+    let store = sample_finalize_store!();
 
     // Initialize the validators and delegators.
     let (validators, delegators) = initialize_stakers(&store, 1, 1, rng).unwrap();
@@ -1831,7 +1823,7 @@ fn test_unbond_validator_continues_if_there_is_a_delegator() {
     // Construct the process.
     let process = Process::<CurrentNetwork>::load_testing_only().unwrap();
     // Initialize a new finalize store.
-    let (store, _temp_dir) = sample_finalize_store!();
+    let store = sample_finalize_store!();
 
     // Initialize the validators and delegators.
     let (validators, delegators) = initialize_stakers(&store, 1, 1, rng).unwrap();
@@ -1912,7 +1904,7 @@ fn test_unbond_delegator() {
     // Construct the process.
     let process = Process::<CurrentNetwork>::load_testing_only().unwrap();
     // Initialize a new finalize store.
-    let (store, _temp_dir) = sample_finalize_store!();
+    let store = sample_finalize_store!();
 
     // Initialize the validators and delegators.
     let (validators, delegators) = initialize_stakers(&store, 1, 1, rng).unwrap();
@@ -2070,7 +2062,7 @@ fn test_unbond_delegator_without_validator() {
     // Construct the process.
     let process = Process::<CurrentNetwork>::load_testing_only().unwrap();
     // Initialize a new finalize store.
-    let (store, _temp_dir) = sample_finalize_store!();
+    let store = sample_finalize_store!();
 
     // Initialize the validators and delegators.
     let (validators, delegators) = initialize_stakers(&store, 1, 1, rng).unwrap();
@@ -2114,7 +2106,7 @@ fn test_unbond_delegator_removes_validator_with_insufficient_stake() {
     // Construct the process.
     let process = Process::<CurrentNetwork>::load_testing_only().unwrap();
     // Initialize a new finalize store.
-    let (store, _temp_dir) = sample_finalize_store!();
+    let store = sample_finalize_store!();
 
     // Initialize the validators and delegators.
     let (validators, delegators) = initialize_stakers(&store, 1, 1, rng).unwrap();
@@ -2568,7 +2560,7 @@ fn test_claim_unbond_public_to_withdrawal_address() {
     let process = Process::<CurrentNetwork>::load_testing_only().unwrap();
 
     // Initialize a new finalize store.
-    let (store, _temp_dir) = sample_finalize_store!();
+    let store = sample_finalize_store!();
 
     // Initialize the validators and delegators.
     let (validators, delegators) = initialize_stakers(&store, 1, 1, rng).unwrap();
@@ -2655,7 +2647,7 @@ fn test_bonding_multiple_stakers_to_same_withdrawal_address() {
     let process = Process::<CurrentNetwork>::load_testing_only().unwrap();
 
     // Initialize a new finalize store.
-    let (store, _temp_dir) = sample_finalize_store!();
+    let store = sample_finalize_store!();
 
     // Initialize the validators and delegators.
     let (validators, delegators) = initialize_stakers(&store, 1, 1, rng).unwrap();
@@ -2686,7 +2678,7 @@ fn test_claim_unbond_public_removes_withdraw_mapping() {
     let process = Process::<CurrentNetwork>::load_testing_only().unwrap();
 
     // Initialize a new finalize store.
-    let (store, _temp_dir) = sample_finalize_store!();
+    let store = sample_finalize_store!();
 
     // Initialize the validators and delegators.
     let (validators, _) = initialize_stakers(&store, 1, 0, rng).unwrap();
@@ -2744,7 +2736,7 @@ fn test_bond_validator_to_different_withdraw_address_fails() {
     let process = Process::<CurrentNetwork>::load_testing_only().unwrap();
 
     // Initialize a new finalize store.
-    let (store, _temp_dir) = sample_finalize_store!();
+    let store = sample_finalize_store!();
 
     // Initialize the validators and delegators.
     let (validators, _) = initialize_stakers(&store, 1, 0, rng).unwrap();
@@ -2782,7 +2774,7 @@ fn test_bond_validator_with_different_commission_fails() {
     let process = Process::<CurrentNetwork>::load_testing_only().unwrap();
 
     // Initialize a new finalize store.
-    let (store, _temp_dir) = sample_finalize_store!();
+    let store = sample_finalize_store!();
 
     // Initialize the validators and delegators.
     let (validators, _) = initialize_stakers(&store, 1, 0, rng).unwrap();

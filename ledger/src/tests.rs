@@ -30,7 +30,11 @@ use ledger_authority::Authority;
 use ledger_block::{Block, ConfirmedTransaction, Execution, Ratify, Rejected, Transaction};
 use ledger_committee::{Committee, MIN_VALIDATOR_STAKE};
 use ledger_narwhal::{BatchCertificate, BatchHeader, Data, Subdag, Transmission, TransmissionID};
-use ledger_store::{ConsensusStore, helpers::memory::ConsensusMemory};
+use ledger_store::ConsensusStore;
+#[cfg(not(feature = "rocks"))]
+use ledger_store::helpers::memory::ConsensusMemory;
+#[cfg(feature = "rocks")]
+use ledger_store::helpers::rocksdb::ConsensusDB;
 use snarkvm_utilities::try_vm_runtime;
 use synthesizer::{Stack, program::Program, vm::VM};
 
@@ -39,9 +43,14 @@ use rand::seq::SliceRandom;
 use std::collections::{BTreeMap, HashMap};
 use time::OffsetDateTime;
 
+#[cfg(not(feature = "rocks"))]
+type LedgerType<N> = ConsensusMemory<N>;
+#[cfg(feature = "rocks")]
+type LedgerType<N> = ConsensusDB<N>;
+
 /// Initializes a sample VM.
-fn sample_vm() -> VM<CurrentNetwork, ConsensusMemory<CurrentNetwork>> {
-    VM::from(ConsensusStore::<CurrentNetwork, ConsensusMemory<CurrentNetwork>>::open(None).unwrap()).unwrap()
+fn sample_vm() -> VM<CurrentNetwork, LedgerType<CurrentNetwork>> {
+    VM::from(ConsensusStore::<CurrentNetwork, LedgerType<CurrentNetwork>>::open(None).unwrap()).unwrap()
 }
 
 /// Extract the transmissions from a block.
@@ -71,8 +80,7 @@ fn construct_quorum_blocks(
 ) -> Vec<Block<CurrentNetwork>> {
     // Initialize the ledger with the genesis block.
     let ledger =
-        Ledger::<CurrentNetwork, ConsensusMemory<CurrentNetwork>>::load(genesis.clone(), StorageMode::Production)
-            .unwrap();
+        Ledger::<CurrentNetwork, LedgerType<CurrentNetwork>>::load(genesis.clone(), StorageMode::Production).unwrap();
 
     // Initialize the round parameters.
     assert!(num_blocks > 0);
@@ -121,7 +129,7 @@ fn construct_quorum_blocks(
 
     // Helper function to create a quorum block.
     fn create_next_quorum_block(
-        ledger: &Ledger<CurrentNetwork, ConsensusMemory<CurrentNetwork>>,
+        ledger: &Ledger<CurrentNetwork, LedgerType<CurrentNetwork>>,
         round: u64,
         leader_certificate: &BatchCertificate<CurrentNetwork>,
         previous_leader_certificate: Option<&BatchCertificate<CurrentNetwork>>,
@@ -182,7 +190,7 @@ fn test_load() {
     // Sample the genesis private key.
     let private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
     // Initialize the store.
-    let store = ConsensusStore::<_, ConsensusMemory<_>>::open(None).unwrap();
+    let store = ConsensusStore::<_, LedgerType<_>>::open(None).unwrap();
     // Create a genesis block.
     let genesis = VM::from(store).unwrap().genesis_beacon(&private_key, rng).unwrap();
 
@@ -3210,8 +3218,7 @@ fn test_max_committee_limit_with_bonds() {
 
     // Initialize a Ledger from the genesis block.
     let ledger =
-        Ledger::<CurrentNetwork, ConsensusMemory<CurrentNetwork>>::load(genesis_block, StorageMode::Production)
-            .unwrap();
+        Ledger::<CurrentNetwork, LedgerType<CurrentNetwork>>::load(genesis_block, StorageMode::Production).unwrap();
 
     // Bond the first validator.
     let bond_first_transaction = ledger
@@ -4270,7 +4277,7 @@ fn test_forged_block_subdags() {
     // Sample the genesis private key.
     let private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
     // Initialize the store.
-    let store = ConsensusStore::<_, ConsensusMemory<_>>::open(None).unwrap();
+    let store = ConsensusStore::<_, LedgerType<_>>::open(None).unwrap();
     // Create a genesis block with a seeded RNG to reproduce the same genesis private keys.
     let seed: u64 = rng.gen();
     let genesis_rng = &mut TestRng::from_seed(seed);
@@ -4294,8 +4301,7 @@ fn test_forged_block_subdags() {
     let block_3 = quorum_blocks.remove(0);
 
     // Construct the ledger.
-    let ledger =
-        Ledger::<CurrentNetwork, ConsensusMemory<CurrentNetwork>>::load(genesis, StorageMode::Production).unwrap();
+    let ledger = Ledger::<CurrentNetwork, LedgerType<CurrentNetwork>>::load(genesis, StorageMode::Production).unwrap();
     ledger.advance_to_next_block(&block_1).unwrap();
     ledger.check_next_block(&block_2, rng).unwrap();
 

@@ -64,7 +64,7 @@ impl<N: Network> FinalizeStorage<N> for FinalizeMemory<N> {
 
     /// Initializes the test-variant of the storage.
     #[cfg(any(test, feature = "test"))]
-    fn open_testing(_: std::path::PathBuf, dev: Option<u16>) -> Result<Self> {
+    fn open_testing(dev: Option<u16>) -> Result<Self> {
         Self::open(dev)
     }
 
@@ -120,7 +120,7 @@ impl<N: Network> CommitteeStorage<N> for CommitteeMemory<N> {
 
     /// Initializes the test-variant of the storage.
     #[cfg(any(test, feature = "test"))]
-    fn open_testing(_: std::path::PathBuf, dev: Option<u16>) -> Result<Self> {
+    fn open_testing(dev: Option<u16>) -> Result<Self> {
         Self::open(dev)
     }
 

@@ -123,6 +123,9 @@ default-features = false
 features = [ "write" ]
 optional = true
 
+[dependencies.tempfile]
+version = "3.8"
+
 [dependencies.tracing]
 version = "0.1"
 optional = true
@@ -138,9 +141,6 @@ path = "../../ledger/test-helpers"
 
 [dev-dependencies.serial_test]
 version = "2"
-
-[dev-dependencies.tempfile]
-version = "3.8"
 
 [dev-dependencies.tracing-test]
 version = "0.2"

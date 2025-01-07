@@ -42,7 +42,7 @@ pub trait CommitteeStorage<N: Network>: 'static + Clone + Send + Sync {
 
     /// Initializes the test-variant of the storage.
     #[cfg(any(test, feature = "test"))]
-    fn open_testing(temp_dir: std::path::PathBuf, dev: Option<u16>) -> Result<Self>;
+    fn open_testing(dev: Option<u16>) -> Result<Self>;
 
     /// Returns the current round map.
     fn current_round_map(&self) -> &Self::CurrentRoundMap;
@@ -310,9 +310,9 @@ impl<N: Network, C: CommitteeStorage<N>> CommitteeStore<N, C> {
 
     /// Initializes the test-variant of the storage.
     #[cfg(any(test, feature = "test"))]
-    pub fn open_testing(temp_dir: std::path::PathBuf, dev: Option<u16>) -> Result<Self> {
+    pub fn open_testing(dev: Option<u16>) -> Result<Self> {
         // Initialize the committee storage.
-        let storage = C::open_testing(temp_dir, dev)?;
+        let storage = C::open_testing(dev)?;
         // Return the committee store.
         Ok(Self { storage, _phantom: PhantomData })
     }

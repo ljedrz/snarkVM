@@ -64,14 +64,14 @@ impl<N: Network> FinalizeStorage<N> for FinalizeDB<N> {
 
     /// Initializes the test-variant of the storage.
     #[cfg(any(test, feature = "test"))]
-    fn open_testing(temp_dir: std::path::PathBuf, dev: Option<u16>) -> Result<Self> {
+    fn open_testing(dev: Option<u16>) -> Result<Self> {
         // Initialize the committee store.
-        let committee_store = CommitteeStore::<N, CommitteeDB<N>>::open_testing(temp_dir.clone(), dev)?;
+        let committee_store = CommitteeStore::<N, CommitteeDB<N>>::open_testing(dev)?;
         // Return the finalize storage.
         Ok(Self {
             committee_store,
-            program_id_map: rocksdb::RocksDB::open_map_testing(temp_dir.clone(), dev, MapID::Program(ProgramMap::ProgramID))?,
-            key_value_map: rocksdb::RocksDB::open_nested_map_testing(temp_dir, dev, MapID::Program(ProgramMap::KeyValueID))?,
+            program_id_map: rocksdb::RocksDB::open_map_testing(MapID::Program(ProgramMap::ProgramID))?,
+            key_value_map: rocksdb::RocksDB::open_nested_map_testing(MapID::Program(ProgramMap::KeyValueID))?,
             storage_mode: dev.into(),
         })
     }
@@ -128,11 +128,11 @@ impl<N: Network> CommitteeStorage<N> for CommitteeDB<N> {
 
     /// Initializes the test-variant of the storage.
     #[cfg(any(test, feature = "test"))]
-    fn open_testing(temp_dir: std::path::PathBuf, dev: Option<u16>) -> Result<Self> {
+    fn open_testing(dev: Option<u16>) -> Result<Self> {
         Ok(Self {
-            current_round_map: rocksdb::RocksDB::open_map_testing(temp_dir.clone(), dev, MapID::Committee(CommitteeMap::CurrentRound))?,
-            round_to_height_map: rocksdb::RocksDB::open_map_testing(temp_dir.clone(), dev, MapID::Committee(CommitteeMap::RoundToHeight))?,
-            committee_map: rocksdb::RocksDB::open_map_testing(temp_dir, dev, MapID::Committee(CommitteeMap::Committee))?,
+            current_round_map: rocksdb::RocksDB::open_map_testing(MapID::Committee(CommitteeMap::CurrentRound))?,
+            round_to_height_map: rocksdb::RocksDB::open_map_testing(MapID::Committee(CommitteeMap::RoundToHeight))?,
+            committee_map: rocksdb::RocksDB::open_map_testing(MapID::Committee(CommitteeMap::Committee))?,
             storage_mode: dev.into(),
         })
     }

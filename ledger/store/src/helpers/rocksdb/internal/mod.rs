@@ -40,6 +40,7 @@ use std::{
         atomic::{AtomicBool, AtomicUsize, Ordering},
     },
 };
+use tempfile::TempDir;
 
 pub const PREFIX_LEN: usize = 4; // N::ID (u16) + DataID (u16)
 
@@ -93,6 +94,8 @@ pub struct RocksDB {
     pub(super) atomic_writes_paused: Arc<AtomicBool>,
     /// This is an optimization that avoids some allocations when querying the database.
     pub(super) default_readopts: rocksdb::ReadOptions,
+    /// TODO
+    temp_path: Option<Arc<TempDir>>,
 }
 
 impl Clone for RocksDB {
@@ -105,6 +108,7 @@ impl Clone for RocksDB {
             atomic_depth: self.atomic_depth.clone(),
             atomic_writes_paused: self.atomic_writes_paused.clone(),
             default_readopts: Default::default(),
+            temp_path: self.temp_path.clone(),
         }
     }
 }
@@ -154,6 +158,7 @@ impl Database for RocksDB {
                     atomic_depth: Default::default(),
                     atomic_writes_paused: Default::default(),
                     default_readopts: Default::default(),
+                    temp_path: Default::default(),
                 })
             })?
             .clone();
@@ -274,22 +279,13 @@ impl RocksDB {
         self.atomic_writes_paused.load(Ordering::SeqCst)
     }
 
-    /// Opens the test database.
+    /// Opens a test database using the given temporary directory.
     #[cfg(any(test, feature = "test"))]
-    pub fn open_testing(temp_dir: std::path::PathBuf, dev: Option<u16>) -> Result<Self> {
-        use console::prelude::{Rng, TestRng};
-
-        // Ensure the `temp_dir` is unique.
-        let temp_dir = temp_dir.join(Rng::gen::<u64>(&mut TestRng::default()).to_string());
-
-        // Construct the directory for the test database.
-        let primary = match dev {
-            Some(dev) => temp_dir.join(dev.to_string()),
-            None => temp_dir,
-        };
+    pub fn open_testing_in(temp_dir: TempDir) -> Result<Self> {
+        let temp_path = temp_dir.path();
 
         // Prepare the storage mode.
-        let storage_mode = StorageMode::from(primary.clone());
+        let storage_mode = StorageMode::from(temp_path.to_owned());
 
         let database = {
             // Customize database options.
@@ -317,7 +313,7 @@ impl RocksDB {
                 // options.set_bottommost_compression_type(rocksdb::DBCompressionType::None);
                 // options.set_write_buffer_size(1 << 28);
 
-                Arc::new(rocksdb::DB::open(&options, primary)?)
+                Arc::new(rocksdb::DB::open(&options, temp_path)?)
             };
 
             Ok::<_, anyhow::Error>(RocksDB {
@@ -328,6 +324,7 @@ impl RocksDB {
                 atomic_depth: Default::default(),
                 atomic_writes_paused: Default::default(),
                 default_readopts: Default::default(),
+                temp_path: Some(Arc::new(temp_dir)),
             })
         }?;
 
@@ -338,15 +335,22 @@ impl RocksDB {
         }
     }
 
+    /// Opens the test database.
+    #[cfg(any(test, feature = "test"))]
+    pub fn open_testing() -> Result<Self> {
+        // Create a dedicated, self-destructing temporary directory.
+        let temp_dir = tempfile::tempdir()?;
+
+        Self::open_testing_in(temp_dir)
+    }
+
     /// Opens the test map.
     #[cfg(any(test, feature = "test"))]
     pub fn open_map_testing<K: Serialize + DeserializeOwned, V: Serialize + DeserializeOwned, T: Into<u16>>(
-        temp_dir: std::path::PathBuf,
-        dev: Option<u16>,
         map_id: T,
     ) -> Result<DataMap<K, V>> {
         // Open the RocksDB test database.
-        let database = Self::open_testing(temp_dir, dev)?;
+        let database = Self::open_testing()?;
 
         // Combine contexts to create a new scope.
         let mut context = database.network_id.to_le_bytes().to_vec();
@@ -370,12 +374,10 @@ impl RocksDB {
         V: Serialize + DeserializeOwned,
         T: Into<u16>,
     >(
-        temp_dir: std::path::PathBuf,
-        dev: Option<u16>,
         map_id: T,
     ) -> Result<NestedDataMap<M, K, V>> {
         // Open the RocksDB test database.
-        let database = Self::open_testing(temp_dir, dev)?;
+        let database = Self::open_testing()?;
 
         // Combine contexts to create a new scope.
         let mut context = database.network_id.to_le_bytes().to_vec();

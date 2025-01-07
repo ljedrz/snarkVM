@@ -506,7 +506,7 @@ jobs:
     resource_class: << pipeline.parameters.medium >>
     steps:
       - run_serial:
-          flags: --features=rocks
+          flags: --features=rocks,test
           workspace_member: ledger
           cache_key: v1.0.0-rust-1.81.0-snarkvm-ledger-with-rocksdb-cache
 
@@ -643,7 +643,7 @@ jobs:
     resource_class: << pipeline.parameters.twoxlarge >>
     steps:
       - run_serial:
-          flags: --features=rocks
+          flags: --features=rocks,test
           workspace_member: ledger/store
           cache_key: v1.0.0-rust-1.81.0-snarkvm-ledger-store-cache
 
@@ -712,7 +712,7 @@ jobs:
     resource_class: << pipeline.parameters.xlarge >>
     steps:
       - run_serial:
-          flags: --features=rocks
+          flags: --features=rocks,test
           workspace_member: synthesizer/process
           cache_key: v1.0.0-rust-1.81.0-snarkvm-synthesizer-process-cache
 
@@ -945,8 +945,7 @@ workflows:
       - curves
       - fields
       - ledger
-# TODO (howardwu) - Implement `open_testing` on all storage, update to `CurrentConsensusStore::open_testing`, then re-enable.
-#      - ledger-with-rocksdb
+      - ledger-with-rocksdb
       - ledger-with-valid-solutions
       - ledger-authority
       - ledger-block

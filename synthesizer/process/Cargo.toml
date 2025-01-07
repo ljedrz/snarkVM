@@ -43,6 +43,7 @@ wasm = [
   "synthesizer-program/wasm",
   "synthesizer-snark/wasm"
 ]
+test = [ "console/test", "ledger-block/test", "ledger-store/test" ]
 timer = [ "aleo-std/timer" ]
 
 [[bench]]

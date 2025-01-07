@@ -23,6 +23,8 @@ use console::{
 };
 use ledger_committee::{MIN_DELEGATOR_STAKE, MIN_VALIDATOR_SELF_STAKE, MIN_VALIDATOR_STAKE};
 use ledger_query::Query;
+#[cfg(feature = "rocks")]
+use ledger_store::ConsensusStorage;
 use ledger_store::{
     BlockStore,
     FinalizeMode,
@@ -45,18 +47,14 @@ const TEST_COMMISSION: u8 = 5;
 macro_rules! sample_finalize_store {
     () => {{
         #[cfg(feature = "rocks")]
-        let temp_dir = tempfile::tempdir().expect("Failed to open temporary directory");
+        let (store, temp_dir) = {
+            let consensus_db = ledger_store::helpers::rocksdb::ConsensusDB::open(None).unwrap();
+            let consensus_store = ledger_store::ConsensusStore::from(consensus_db);
+            // The consensus store creates and holds the temporary database directory.
+            (consensus_store.finalize_store().clone(), consensus_store)
+        };
         #[cfg(not(feature = "rocks"))]
-        let temp_dir = ();
-
-        #[cfg(feature = "rocks")]
-        let store = FinalizeStore::<CurrentNetwork, ledger_store::helpers::rocksdb::FinalizeDB<_>>::open_testing(
-            temp_dir.path().to_owned(),
-            None,
-        )
-        .unwrap();
-        #[cfg(not(feature = "rocks"))]
-        let store = FinalizeStore::<CurrentNetwork, FinalizeMemory<_>>::open(None).unwrap();
+        let (store, temp_dir) = (FinalizeStore::<CurrentNetwork, FinalizeMemory<_>>::open(None).unwrap(), ());
 
         (store, temp_dir)
     }};

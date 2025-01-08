@@ -412,7 +412,7 @@ pub(crate) mod test_helpers {
     #[cfg(not(feature = "rocks"))]
     use ledger_store::helpers::memory::ConsensusMemory;
     #[cfg(feature = "rocks")]
-    use ledger_store::helpers::rocksdb::{ConsensusDB, RocksDB};
+    use ledger_store::helpers::rocksdb::ConsensusDB;
     use ledger_test_helpers::{large_transaction_program, small_transaction_program};
     use synthesizer_program::Program;
 
@@ -431,22 +431,9 @@ pub(crate) mod test_helpers {
         FinalizeGlobalState::from(block_height as u64, block_height, [0u8; 32])
     }
 
-    #[cfg(not(feature = "rocks"))]
     pub(crate) fn sample_vm() -> VM<CurrentNetwork, LedgerType> {
         // Initialize a new VM.
         VM::from(ConsensusStore::open(None).unwrap()).unwrap()
-    }
-
-    #[cfg(feature = "rocks")]
-    pub(crate) fn sample_vm() -> VM<CurrentNetwork, LedgerType> {
-        // Initialize a new VM.
-        let temp_dir = tempfile::tempdir().unwrap();
-        let database_path = temp_dir.path().to_owned();
-        // The database binding below will be dropped by the end of the scope, but its location will persist due
-        // to TempDir being moved to the RocksDB object.
-        let _database = RocksDB::open_testing_in(temp_dir).unwrap();
-        let ledger = ConsensusStore::open(database_path).unwrap();
-        VM::from(ledger).unwrap()
     }
 
     pub(crate) fn sample_genesis_private_key(rng: &mut TestRng) -> PrivateKey<CurrentNetwork> {

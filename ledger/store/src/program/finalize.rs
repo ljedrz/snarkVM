@@ -82,10 +82,6 @@ pub trait FinalizeStorage<N: Network>: 'static + Clone + Send + Sync {
     /// Initializes the program state storage.
     fn open<S: Clone + Into<StorageMode>>(storage: S) -> Result<Self>;
 
-    /// Initializes the test-variant of the storage.
-    #[cfg(any(test, feature = "test"))]
-    fn open_testing(dev: Option<u16>) -> Result<Self>;
-
     /// Returns the committee storage.
     fn committee_store(&self) -> &CommitteeStore<N, Self::CommitteeStorage>;
     /// Returns the program ID map.
@@ -537,12 +533,6 @@ impl<N: Network, P: FinalizeStorage<N>> FinalizeStore<N, P> {
     /// Initializes the finalize store.
     pub fn open<S: Clone + Into<StorageMode>>(storage: S) -> Result<Self> {
         Self::from(P::open(storage)?)
-    }
-
-    /// Initializes the test-variant of the storage.
-    #[cfg(any(test, feature = "test"))]
-    pub fn open_testing(dev: Option<u16>) -> Result<Self> {
-        Self::from(P::open_testing(dev)?)
     }
 
     /// Initializes a finalize store from storage.
@@ -1301,7 +1291,7 @@ mod tests {
         // Initialize a new finalize store.
         #[cfg(feature = "rocks")]
         let finalize_store = {
-            let program_rocksdb = crate::helpers::rocksdb::FinalizeDB::open_testing(None).unwrap();
+            let program_rocksdb = crate::helpers::rocksdb::FinalizeDB::open(None).unwrap();
             FinalizeStore::from(program_rocksdb).unwrap()
         };
 

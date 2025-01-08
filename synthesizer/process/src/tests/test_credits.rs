@@ -45,8 +45,7 @@ const TEST_COMMISSION: u8 = 5;
 macro_rules! sample_finalize_store {
     () => {{
         #[cfg(feature = "rocks")]
-        let store =
-            FinalizeStore::<CurrentNetwork, ledger_store::helpers::rocksdb::FinalizeDB<_>>::open_testing(None).unwrap();
+        let store = FinalizeStore::<CurrentNetwork, ledger_store::helpers::rocksdb::FinalizeDB<_>>::open(None).unwrap();
         #[cfg(not(feature = "rocks"))]
         let store = FinalizeStore::<CurrentNetwork, FinalizeMemory<_>>::open(None).unwrap();
 

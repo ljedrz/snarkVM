@@ -24,28 +24,22 @@ use console::{
     types::Scalar,
 };
 
-// TODO: check if it's still needed
-use serial_test::serial;
-
 // pub(crate) fn temp_file() -> std::path::PathBuf {
 //     tempfile::NamedTempFile::new().expect("Failed to open temporary file").path().to_owned()
 // }
 
 #[test]
-#[serial]
 fn test_open() {
     let _storage = RocksDB::open(0, None).expect("Failed to open storage");
 }
 
 #[test]
-#[serial]
 fn test_open_map() {
     let _map =
         RocksDB::open_map::<_, u32, String, _>(0, None, MapID::Test(TestMapID::Test)).expect("Failed to open data map");
 }
 
 #[test]
-#[serial]
 fn test_insert_and_contains_key() {
     let map = RocksDB::open_map(0, None, MapID::Test(TestMapID::Test)).expect("Failed to open data map");
 
@@ -55,7 +49,6 @@ fn test_insert_and_contains_key() {
 }
 
 #[test]
-#[serial]
 fn test_insert_and_get() {
     let map = RocksDB::open_map(0, None, MapID::Test(TestMapID::Test)).expect("Failed to open data map");
 
@@ -69,7 +62,6 @@ fn test_insert_and_get() {
 }
 
 #[test]
-#[serial]
 fn test_insert_and_remove() {
     let map = RocksDB::open_map(0, None, MapID::Test(TestMapID::Test)).expect("Failed to open data map");
 
@@ -84,7 +76,6 @@ fn test_insert_and_remove() {
 }
 
 #[test]
-#[serial]
 fn test_insert_and_iter() {
     let map = RocksDB::open_map(0, None, MapID::Test(TestMapID::Test)).expect("Failed to open data map");
 
@@ -96,7 +87,6 @@ fn test_insert_and_iter() {
 }
 
 #[test]
-#[serial]
 fn test_insert_and_keys() {
     let map = RocksDB::open_map(0, None, MapID::Test(TestMapID::Test)).expect("Failed to open data map");
 
@@ -108,7 +98,6 @@ fn test_insert_and_keys() {
 }
 
 #[test]
-#[serial]
 fn test_insert_and_values() {
     let map = RocksDB::open_map(0, None, MapID::Test(TestMapID::Test)).expect("Failed to open data map");
 
@@ -120,7 +109,6 @@ fn test_insert_and_values() {
 }
 
 // #[test]
-// #[serial]
 // fn test_export_import() {
 //     let file = temp_file();
 //     {
@@ -144,7 +132,6 @@ fn test_insert_and_values() {
 // }
 
 #[test]
-#[serial]
 fn test_scalar_mul() {
     type CurrentNetwork = MainnetV0;
 
@@ -172,7 +159,6 @@ fn test_scalar_mul() {
 }
 
 #[test]
-#[serial]
 fn test_iterator_ordering() {
     let map = RocksDB::open_map(0, None, MapID::Test(TestMapID::Test)).expect("Failed to open data map");
 

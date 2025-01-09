@@ -776,7 +776,6 @@ mod tests {
     };
 
     use anyhow::{anyhow, bail};
-    use serial_test::serial;
     use tracing_test::traced_test;
 
     type CurrentNetwork = MainnetV0;
@@ -979,7 +978,6 @@ mod tests {
     }
 
     #[test]
-    #[serial]
     fn test_contains_key_sanity_check() {
         // Initialize 'm'.
         let m = 0usize;
@@ -996,7 +994,6 @@ mod tests {
     }
 
     #[test]
-    #[serial]
     #[traced_test]
     fn test_insert_and_get_value_speculative() {
         // Initialize a map.
@@ -1007,7 +1004,6 @@ mod tests {
     }
 
     #[test]
-    #[serial]
     #[traced_test]
     fn test_remove_key_and_get_value_speculative() {
         // Initialize a map.
@@ -1018,7 +1014,6 @@ mod tests {
     }
 
     #[test]
-    #[serial]
     #[traced_test]
     fn test_contains_key() {
         // Initialize a map.
@@ -1029,7 +1024,6 @@ mod tests {
     }
 
     #[test]
-    #[serial]
     #[traced_test]
     fn test_get_map() {
         // Initialize a map.
@@ -1040,7 +1034,6 @@ mod tests {
     }
 
     #[test]
-    #[serial]
     #[traced_test]
     fn test_check_iterators_match() {
         // Initialize a map.
@@ -1051,7 +1044,6 @@ mod tests {
     }
 
     #[test]
-    #[serial]
     #[traced_test]
     fn test_iter_from_nested_to_non_nested() {
         // Open a storage with a DataMap right after a NestedDataMap.
@@ -1074,7 +1066,6 @@ mod tests {
     }
 
     #[test]
-    #[serial]
     #[traced_test]
     fn test_atomic_writes_are_batched() {
         // Initialize a map.
@@ -1085,7 +1076,6 @@ mod tests {
     }
 
     #[test]
-    #[serial]
     #[traced_test]
     fn test_atomic_writes_can_be_aborted() {
         // Initialize a map.
@@ -1661,7 +1651,6 @@ mod tests {
     }
 
     #[test]
-    #[serial]
     #[traced_test]
     fn test_nested_atomic_write_batch_success() -> Result<()> {
         // Initialize a multi-layer test storage.
@@ -1732,7 +1721,6 @@ mod tests {
     }
 
     #[test]
-    #[serial]
     #[traced_test]
     fn test_nested_atomic_write_batch_failure() {
         // We'll want to execute the atomic write batch in its own function, in order to be able to

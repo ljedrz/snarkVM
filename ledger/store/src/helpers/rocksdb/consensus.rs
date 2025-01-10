@@ -32,7 +32,7 @@ pub struct ConsensusDB<N: Network> {
     finalize_store: FinalizeStore<N, FinalizeDB<N>>,
     /// The block store.
     block_store: BlockStore<N, BlockDB<N>>,
-    /// TODO
+    /// A test-only instance of TempDir which is cleaned up afterwards.
     #[cfg(any(test, feature = "test"))]
     _temp_dir: Arc<tempfile::TempDir>,
 }
@@ -58,7 +58,7 @@ impl<N: Network> ConsensusStorage<N> for ConsensusDB<N> {
         })
     }
 
-    /// Initializes the consensus storage.
+    /// Initializes a test-only consensus storage.
     #[cfg(any(test, feature = "test"))]
     fn open<S: Clone + Into<StorageMode>>(_storage: S) -> Result<Self> {
         // Overwrite any given storage mode with a path to a temporary directory.

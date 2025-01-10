@@ -45,6 +45,9 @@ use std::{
 
 pub const PREFIX_LEN: usize = 4; // N::ID (u16) + DataID (u16)
 
+// A static map of database paths to their objects; it's needed in order to facilitate concurrent
+// tests involving persistent storage, but it only ever has a single member outside of them.
+// TODO: remove the static in favor of improved `open` methods.
 static DATABASES: Mutex<Lazy<HashMap<PathBuf, RocksDB>>> = Mutex::new(Lazy::new(|| HashMap::new()));
 
 pub trait Database {
@@ -97,7 +100,8 @@ pub struct RocksDB {
     pub(super) atomic_writes_paused: Arc<AtomicBool>,
     /// This is an optimization that avoids some allocations when querying the database.
     pub(super) default_readopts: rocksdb::ReadOptions,
-    /// TODO
+    /// A test-only instance of TempDir which is cleaned up afterwards; it is optional, as
+    /// it is not needed when creating the database via the higher-level ConsensusDB.
     #[cfg(any(test, feature = "test"))]
     temp_dir: Option<Arc<tempfile::TempDir>>,
 }
@@ -133,7 +137,10 @@ impl Database for RocksDB {
     /// In development mode, the database opens directory `/path/to/repo/.ledger-{network}-{id}`.
     fn open<S: Clone + Into<StorageMode>>(network_id: u16, storage: S) -> Result<Self> {
         let mut storage = storage.into();
+        #[cfg(any(test, feature = "test"))]
         let mut temp_dir = None;
+        // If we are running tests and haven't already received a custom path indicating the
+        // existence of a TempDir, create one and bind its lifetime to the RocksDB object.
         if cfg!(any(test, feature = "test")) && !matches!(storage, StorageMode::Custom(_)) {
             temp_dir = Some(Arc::new(tempfile::TempDir::with_prefix("snarkos_test_")?));
             storage = StorageMode::Custom(temp_dir.as_ref().unwrap().path().to_owned());
@@ -141,36 +148,40 @@ impl Database for RocksDB {
 
         // Retrieve the database.
         let db_path = aleo_std_storage::aleo_ledger_dir(network_id, storage.clone());
-        let db = DATABASES.lock().entry(db_path.clone()).or_insert_with(|| {
-            // Customize database options.
-            let mut options = rocksdb::Options::default();
-            options.set_compression_type(rocksdb::DBCompressionType::Lz4);
+        let db = DATABASES
+            .lock()
+            .entry(db_path.clone())
+            .or_insert_with(|| {
+                // Customize database options.
+                let mut options = rocksdb::Options::default();
+                options.set_compression_type(rocksdb::DBCompressionType::Lz4);
 
-            // Register the prefix length.
-            let prefix_extractor = rocksdb::SliceTransform::create_fixed_prefix(PREFIX_LEN);
-            options.set_prefix_extractor(prefix_extractor);
+                // Register the prefix length.
+                let prefix_extractor = rocksdb::SliceTransform::create_fixed_prefix(PREFIX_LEN);
+                options.set_prefix_extractor(prefix_extractor);
 
-            let rocksdb = {
-                options.increase_parallelism(2);
-                options.set_max_background_jobs(4);
-                options.create_if_missing(true);
-                options.set_max_open_files(8192);
+                let rocksdb = {
+                    options.increase_parallelism(2);
+                    options.set_max_background_jobs(4);
+                    options.create_if_missing(true);
+                    options.set_max_open_files(8192);
 
-                Arc::new(rocksdb::DB::open(&options, db_path).expect("Couldn't open the database"))
-            };
+                    Arc::new(rocksdb::DB::open(&options, db_path).expect("Couldn't open the database"))
+                };
 
-            RocksDB {
-                rocksdb,
-                network_id,
-                storage_mode: storage.into(),
-                atomic_batch: Default::default(),
-                atomic_depth: Default::default(),
-                atomic_writes_paused: Default::default(),
-                default_readopts: Default::default(),
-                temp_dir,
-            }
-        })
-        .clone();
+                RocksDB {
+                    rocksdb,
+                    network_id,
+                    storage_mode: storage.into(),
+                    atomic_batch: Default::default(),
+                    atomic_depth: Default::default(),
+                    atomic_writes_paused: Default::default(),
+                    default_readopts: Default::default(),
+                    #[cfg(any(test, feature = "test"))]
+                    temp_dir,
+                }
+            })
+            .clone();
 
         Ok(db)
     }

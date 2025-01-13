@@ -390,7 +390,6 @@ pub(crate) mod test_helpers {
         network::MainnetV0,
         prelude::*,
     };
-    use ledger_block::Block;
     use ledger_store::ConsensusStore;
     use snarkvm_circuit::network::AleoV0;
     use synthesizer::vm::VM;
@@ -428,10 +427,6 @@ pub(crate) mod test_helpers {
         let ledger = sample_ledger(private_key, rng);
         // Return the test environment.
         TestEnv { ledger, private_key, view_key, address }
-    }
-
-    pub(crate) fn sample_genesis_block() -> Block<CurrentNetwork> {
-        Block::<CurrentNetwork>::from_bytes_le(CurrentNetwork::genesis_bytes()).unwrap()
     }
 
     pub(crate) fn sample_ledger(

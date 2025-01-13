@@ -200,8 +200,14 @@ fn test_load() {
 
 #[test]
 fn test_load_unchecked() {
-    // Load the genesis block.
-    let genesis = crate::test_helpers::sample_genesis_block();
+    let rng = &mut TestRng::default();
+
+    // Sample the genesis private key.
+    let private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
+    // Initialize the store.
+    let store = ConsensusStore::<_, LedgerType<_>>::open(None).unwrap();
+    // Create a genesis block.
+    let genesis = VM::from(store).unwrap().genesis_beacon(&private_key, rng).unwrap();
 
     // Initialize the ledger without checks.
     let ledger = CurrentLedger::load_unchecked(genesis.clone(), StorageMode::Production).unwrap();
@@ -216,6 +222,25 @@ fn test_load_unchecked() {
     assert_eq!(ledger.latest_height(), genesis.height());
     assert_eq!(ledger.latest_round(), genesis.round());
     assert_eq!(ledger.latest_block(), genesis);
+}
+
+#[test]
+fn test_get_block() {
+    let rng = &mut TestRng::default();
+
+    // Sample the genesis private key.
+    let private_key = PrivateKey::<CurrentNetwork>::new(rng).unwrap();
+    // Initialize the store.
+    let store = ConsensusStore::<_, LedgerType<_>>::open(None).unwrap();
+    // Create a genesis block.
+    let genesis = VM::from(store).unwrap().genesis_beacon(&private_key, rng).unwrap();
+
+    // Initialize a new ledger.
+    let ledger = CurrentLedger::load(genesis.clone(), StorageMode::Production).unwrap();
+    // Retrieve the genesis block.
+    let candidate = ledger.get_block(0).unwrap();
+    // Ensure the genesis block matches.
+    assert_eq!(genesis, candidate);
 }
 
 #[test]

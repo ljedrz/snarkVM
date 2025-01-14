@@ -146,7 +146,7 @@ pub trait BlockStorage<N: Network>: 'static + Clone + Send + Sync {
     type TransitionStorage: TransitionStorage<N>;
 
     /// Initializes the block storage.
-    fn open<S: Clone + Into<StorageMode>>(storage: S) -> Result<Self>;
+    fn open<S: Into<StorageMode>>(storage: S) -> Result<Self>;
 
     /// Returns the state root map.
     fn state_root_map(&self) -> &Self::StateRootMap;
@@ -1003,7 +1003,7 @@ pub struct BlockStore<N: Network, B: BlockStorage<N>> {
 
 impl<N: Network, B: BlockStorage<N>> BlockStore<N, B> {
     /// Initializes the block store.
-    pub fn open<S: Clone + Into<StorageMode>>(storage: S) -> Result<Self> {
+    pub fn open<S: Into<StorageMode>>(storage: S) -> Result<Self> {
         // Initialize the block storage.
         let storage = B::open(storage)?;
 

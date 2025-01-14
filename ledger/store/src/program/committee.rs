@@ -38,7 +38,7 @@ pub trait CommitteeStorage<N: Network>: 'static + Clone + Send + Sync {
     type CommitteeMap: for<'a> Map<'a, u32, Committee<N>>;
 
     /// Initializes the committee storage.
-    fn open<S: Clone + Into<StorageMode>>(storage: S) -> Result<Self>;
+    fn open<S: Into<StorageMode>>(storage: S) -> Result<Self>;
 
     /// Returns the current round map.
     fn current_round_map(&self) -> &Self::CurrentRoundMap;
@@ -297,9 +297,9 @@ pub struct CommitteeStore<N: Network, C: CommitteeStorage<N>> {
 
 impl<N: Network, C: CommitteeStorage<N>> CommitteeStore<N, C> {
     /// Initializes the committee store.
-    pub fn open<S: Clone + Into<StorageMode>>(storage: S) -> Result<Self> {
+    pub fn open<S: Into<StorageMode>>(storage: S) -> Result<Self> {
         // Initialize the committee storage.
-        let storage = C::open(storage.clone())?;
+        let storage = C::open(storage)?;
         // Return the committee store.
         Ok(Self { storage, _phantom: PhantomData })
     }

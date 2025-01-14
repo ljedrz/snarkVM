@@ -20,7 +20,6 @@ edition = "2021"
 package = "snarkvm-console"
 path = "../../console"
 version = "=1.1.0"
-features = [ "test" ]
 
 [dependencies.circuit]
 package = "snarkvm-circuit"
@@ -31,7 +30,6 @@ version = "=1.1.0"
 package = "snarkvm-ledger-block"
 path = "../block"
 version = "=1.1.0"
-features = [ "test" ]
 
 [dependencies.ledger-query]
 package = "snarkvm-ledger-query"
@@ -44,7 +42,6 @@ features = [ "query" ]
 package = "snarkvm-ledger-store"
 path = "../store"
 version = "=1.1.0"
-features = [ "test" ]
 
 [dependencies.synthesizer-program]
 package = "snarkvm-synthesizer-program"

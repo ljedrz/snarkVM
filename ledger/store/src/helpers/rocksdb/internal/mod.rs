@@ -26,7 +26,7 @@ pub use nested_map::*;
 mod tests;
 
 use aleo_std_storage::StorageMode;
-use anyhow::{Result, ensure};
+use anyhow::{Result, bail, ensure};
 use once_cell::sync::Lazy;
 use parking_lot::Mutex;
 use serde::{Serialize, de::DeserializeOwned};
@@ -52,17 +52,12 @@ static DATABASES: Mutex<Lazy<HashMap<PathBuf, RocksDB>>> = Mutex::new(Lazy::new(
 
 pub trait Database {
     /// Opens the database.
-    fn open<S: Clone + Into<StorageMode>>(network_id: u16, storage: S) -> Result<Self>
+    fn open<S: Into<StorageMode>>(network_id: u16, storage: S) -> Result<Self>
     where
         Self: Sized;
 
     /// Opens the map with the given `network_id`, `storage mode`, and `map_id` from storage.
-    fn open_map<
-        S: Clone + Into<StorageMode>,
-        K: Serialize + DeserializeOwned,
-        V: Serialize + DeserializeOwned,
-        T: Into<u16>,
-    >(
+    fn open_map<S: Into<StorageMode>, K: Serialize + DeserializeOwned, V: Serialize + DeserializeOwned, T: Into<u16>>(
         network_id: u16,
         storage: S,
         map_id: T,
@@ -70,7 +65,7 @@ pub trait Database {
 
     /// Opens the nested map with the given `network_id`, `storage mode`, and `map_id` from storage.
     fn open_nested_map<
-        S: Clone + Into<StorageMode>,
+        S: Into<StorageMode>,
         M: Serialize + DeserializeOwned,
         K: Serialize + DeserializeOwned,
         V: Serialize + DeserializeOwned,
@@ -100,10 +95,6 @@ pub struct RocksDB {
     pub(super) atomic_writes_paused: Arc<AtomicBool>,
     /// This is an optimization that avoids some allocations when querying the database.
     pub(super) default_readopts: rocksdb::ReadOptions,
-    /// A test-only instance of TempDir which is cleaned up afterwards; it is optional, as
-    /// it is not needed when creating the database via the higher-level ConsensusDB.
-    #[cfg(any(test, feature = "test"))]
-    temp_dir: Option<Arc<tempfile::TempDir>>,
 }
 
 impl Clone for RocksDB {
@@ -116,8 +107,6 @@ impl Clone for RocksDB {
             atomic_depth: self.atomic_depth.clone(),
             atomic_writes_paused: self.atomic_writes_paused.clone(),
             default_readopts: Default::default(),
-            #[cfg(any(test, feature = "test"))]
-            temp_dir: self.temp_dir.clone(),
         }
     }
 }
@@ -135,22 +124,13 @@ impl Database for RocksDB {
     ///
     /// In production mode, the database opens directory `~/.aleo/storage/ledger-{network}`.
     /// In development mode, the database opens directory `/path/to/repo/.ledger-{network}-{id}`.
-    fn open<S: Clone + Into<StorageMode>>(network_id: u16, storage: S) -> Result<Self> {
-        #[allow(unused_mut)]
-        let mut storage = storage.into();
-        #[cfg(any(test, feature = "test"))]
-        let mut temp_dir = None;
-        // If we are running tests and haven't already received a custom path indicating the
-        // existence of a TempDir, create one and bind its lifetime to the RocksDB object.
-        #[cfg(any(test, feature = "test"))]
-        if !matches!(storage, StorageMode::Custom(_)) {
-            temp_dir = Some(Arc::new(tempfile::TempDir::with_prefix("snarkos_test_")?));
-            storage = StorageMode::Custom(temp_dir.as_ref().unwrap().path().to_owned());
-        }
+    /// In tests, the database opens an ephemeral directory in the OS temporary folder.
+    fn open<S: Into<StorageMode>>(network_id: u16, storage: S) -> Result<Self> {
+        let storage = storage.into();
 
         // Retrieve the database.
-        let db_path = aleo_std_storage::aleo_ledger_dir(network_id, storage.clone());
-        let db = DATABASES
+        let db_path = aleo_std_storage::aleo_ledger_dir(network_id, &storage);
+        let database = DATABASES
             .lock()
             .entry(db_path.clone())
             .or_insert_with(|| {
@@ -174,23 +154,25 @@ impl Database for RocksDB {
                 RocksDB {
                     rocksdb,
                     network_id,
-                    storage_mode: storage,
+                    storage_mode: storage.clone(),
                     atomic_batch: Default::default(),
                     atomic_depth: Default::default(),
                     atomic_writes_paused: Default::default(),
                     default_readopts: Default::default(),
-                    #[cfg(any(test, feature = "test"))]
-                    temp_dir,
                 }
             })
             .clone();
 
-        Ok(db)
+        // Ensure the database network ID and storage mode match.
+        match database.network_id == network_id && database.storage_mode == storage {
+            true => Ok(database),
+            false => bail!("Mismatching network ID or storage mode in the database"),
+        }
     }
 
     /// Opens the map with the given `network_id`, `storage mode`, and `map_id` from storage.
     fn open_map<
-        S: Clone + Into<StorageMode>,
+        S: Into<StorageMode>,
         K: Serialize + DeserializeOwned,
         V: Serialize + DeserializeOwned,
         T: Into<u16>,
@@ -218,7 +200,7 @@ impl Database for RocksDB {
 
     /// Opens the nested map with the given `network_id`, `storage mode`, and `map_id` from storage.
     fn open_nested_map<
-        S: Clone + Into<StorageMode>,
+        S: Into<StorageMode>,
         M: Serialize + DeserializeOwned,
         K: Serialize + DeserializeOwned,
         V: Serialize + DeserializeOwned,

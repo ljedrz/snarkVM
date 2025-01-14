@@ -44,7 +44,7 @@ serial = [
   "synthesizer-snark/serial"
 ]
 setup = [ ]
-test = [ "console/test", "ledger-block/test", "ledger-store/test", "synthesizer-process/test" ]
+test = [ "console/test" ]
 timer = [ "aleo-std/timer" ]
 wasm = [
   "process",
@@ -143,7 +143,8 @@ path = "../utilities"
 version = "=1.1.0"
 
 [dependencies.aleo-std]
-version = "0.1.24"
+git = "https://github.com/ljedrz/aleo-std"
+branch = "feat/test_storage_mode"
 default-features = false
 
 [dependencies.anyhow]

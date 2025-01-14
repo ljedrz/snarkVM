@@ -39,7 +39,7 @@ async = [
   "synthesizer/async"
 ]
 metrics = [ "ledger-committee/metrics" ]
-rocks = [ "ledger-store/rocks", "synthesizer/rocks" ]
+rocks = [ "ledger-store/rocks" ]
 serial = [
   "console/serial",
   "ledger-authority/serial",
@@ -51,7 +51,7 @@ serial = [
   "ledger-store/serial",
   "synthesizer/serial"
 ]
-test = [ "console/test", "ledger-block/test", "ledger-store/test", "synthesizer/test" ]
+test = [ "console/test", "ledger-block/test", "ledger-store/test" ]
 test-helpers = [
   "ledger-test-helpers",
   "ledger-committee/test-helpers",
@@ -112,7 +112,8 @@ path = "../synthesizer"
 version = "=1.1.0"
 
 [dependencies.aleo-std]
-version = "0.1.24"
+git = "https://github.com/ljedrz/aleo-std"
+branch = "feat/test_storage_mode"
 default-features = false
 
 [dependencies.anyhow]

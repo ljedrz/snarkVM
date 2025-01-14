@@ -506,7 +506,7 @@ jobs:
     resource_class: << pipeline.parameters.medium >>
     steps:
       - run_serial:
-          flags: --features=rocks,test
+          flags: --features=rocks
           workspace_member: ledger
           cache_key: v1.0.0-rust-1.81.0-snarkvm-ledger-with-rocksdb-cache
 
@@ -643,7 +643,7 @@ jobs:
     resource_class: << pipeline.parameters.twoxlarge >>
     steps:
       - run_serial:
-          flags: --features=rocks,test
+          flags: --features=rocks
           workspace_member: ledger/store
           cache_key: v1.0.0-rust-1.81.0-snarkvm-ledger-store-cache
 
@@ -712,7 +712,7 @@ jobs:
     resource_class: << pipeline.parameters.xlarge >>
     steps:
       - run_serial:
-          flags: --features=rocks,test
+          flags: --features=rocks
           workspace_member: synthesizer/process
           cache_key: v1.0.0-rust-1.81.0-snarkvm-synthesizer-process-cache
 

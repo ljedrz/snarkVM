@@ -50,7 +50,8 @@ impl<N: Network> FinalizeStorage<N> for FinalizeDB<N> {
     type KeyValueMap = NestedDataMap<(ProgramID<N>, Identifier<N>), Plaintext<N>, Value<N>>;
 
     /// Initializes the finalize storage.
-    fn open<S: Clone + Into<StorageMode>>(storage: S) -> Result<Self> {
+    fn open<S: Into<StorageMode>>(storage: S) -> Result<Self> {
+        let storage = storage.into();
         // Initialize the committee store.
         let committee_store = CommitteeStore::<N, CommitteeDB<N>>::open(storage.clone())?;
         // Return the finalize storage.
@@ -58,7 +59,7 @@ impl<N: Network> FinalizeStorage<N> for FinalizeDB<N> {
             committee_store,
             program_id_map: rocksdb::RocksDB::open_map(N::ID, storage.clone(), MapID::Program(ProgramMap::ProgramID))?,
             key_value_map: rocksdb::RocksDB::open_nested_map(N::ID, storage.clone(), MapID::Program(ProgramMap::KeyValueID))?,
-            storage_mode: storage.into(),
+            storage_mode: storage,
         })
     }
 
@@ -103,12 +104,13 @@ impl<N: Network> CommitteeStorage<N> for CommitteeDB<N> {
     type CommitteeMap = DataMap<u32, Committee<N>>;
 
     /// Initializes the committee storage.
-    fn open<S: Clone + Into<StorageMode>>(storage: S) -> Result<Self> {
+    fn open<S: Into<StorageMode>>(storage: S) -> Result<Self> {
+        let storage = storage.into();
         Ok(Self {
             current_round_map: rocksdb::RocksDB::open_map(N::ID, storage.clone(), MapID::Committee(CommitteeMap::CurrentRound))?,
             round_to_height_map: rocksdb::RocksDB::open_map(N::ID, storage.clone(), MapID::Committee(CommitteeMap::RoundToHeight))?,
             committee_map: rocksdb::RocksDB::open_map(N::ID, storage.clone(), MapID::Committee(CommitteeMap::Committee))?,
-            storage_mode: storage.into(),
+            storage_mode: storage,
         })
     }
 

@@ -29,7 +29,8 @@ default-features = false
 features = [ "field", "integers" ]
 
 [dependencies.aleo-std]
-version = "0.1.24"
+git = "https://github.com/ljedrz/aleo-std"
+branch = "feat/test_storage_mode"
 default-features = false
 
 [dependencies.rayon]

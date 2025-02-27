@@ -76,6 +76,7 @@ pub enum ConsensusVersion {
     V1 = 1,
     V2 = 2,
     V3 = 3,
+    V4 = 4,
 }
 
 pub trait Network:
@@ -122,12 +123,6 @@ pub trait Network:
     const EXECUTION_STORAGE_FEE_SCALING_FACTOR: u64 = 5000;
     /// The maximum size execution transactions can be before a quadratic storage penalty applies.
     const EXECUTION_STORAGE_PENALTY_THRESHOLD: u64 = 5000;
-    /// The cost in microcredits per constraint for the deployment transaction.
-    const SYNTHESIS_FEE_MULTIPLIER: u64 = 25; // 25 microcredits per constraint
-    /// The maximum number of variables in a deployment.
-    const MAX_DEPLOYMENT_VARIABLES: u64 = 1 << 20; // 1,048,576 variables
-    /// The maximum number of constraints in a deployment.
-    const MAX_DEPLOYMENT_CONSTRAINTS: u64 = 1 << 20; // 1,048,576 constraints
     /// The maximum number of microcredits that can be spent as a fee.
     const MAX_FEE: u64 = 1_000_000_000_000_000;
     /// The maximum number of microcredits that can be spent on a finalize block.
@@ -217,13 +212,23 @@ pub trait Network:
 
     /// A list of (consensus_version, block_height) pairs indicating when each consensus version takes effect.
     /// Documentation for what is changed at each version can be found in `N::CONSENSUS_VERSION`
-    const CONSENSUS_VERSION_HEIGHTS: [(ConsensusVersion, u32); 3];
+    const CONSENSUS_VERSION_HEIGHTS: [(ConsensusVersion, u32); 4];
     ///  A list of (consensus_version, size) pairs indicating the maximum number of validators in a committee.
     //  Note: This value must **not** decrease without considering the impact on serialization.
     //  Decreasing this value will break backwards compatibility of serialization without explicit
     //  declaration of migration based on round number rather than block height.
     //  Increasing this value will require a migration to prevent forking during network upgrades.
     const MAX_CERTIFICATES: [(ConsensusVersion, u16); 2];
+
+    /// The cost in microcredits per constraint for the deployment transaction.
+    const SYNTHESIS_FEE_MULTIPLIER: [(ConsensusVersion, u64); 2] =
+        [(ConsensusVersion::V1, 25), (ConsensusVersion::V4, 5)];
+    /// The maximum number of variables in a deployment.
+    const MAX_DEPLOYMENT_VARIABLES: [(ConsensusVersion, u64); 2] =
+        [(ConsensusVersion::V1, 1 << 20), (ConsensusVersion::V4, 1 << 21)];
+    /// The maximum number of constraints in a deployment.
+    const MAX_DEPLOYMENT_CONSTRAINTS: [(ConsensusVersion, u64); 2] =
+        [(ConsensusVersion::V1, 1 << 20), (ConsensusVersion::V4, 1 << 21)];
 
     /// Returns the consensus version which is active at the given height.
     ///
@@ -232,6 +237,8 @@ pub trait Network:
     /// V2: Update to the block reward and execution cost algorithms.
     ///
     /// V3: Update to the number of validators and finalize scope RNG seed.
+    ///
+    /// V4: A quintuple reduction of synthesis fee multiplier and the doubling of max variables and constraints.
     #[allow(non_snake_case)]
     fn CONSENSUS_VERSION(seek_height: u32) -> anyhow::Result<ConsensusVersion> {
         match Self::CONSENSUS_VERSION_HEIGHTS.binary_search_by(|(_, height)| height.cmp(&seek_height)) {

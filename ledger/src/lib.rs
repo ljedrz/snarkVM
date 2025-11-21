@@ -145,9 +145,9 @@ pub struct InnerLedger<N: Network, C: ConsensusStorage<N>> {
     /// So the `Option` should always be `Some`,
     /// but there are cases in which it is `None`,
     /// probably only temporarily when loading/initializing the ledger,
-    current_committee: Arc<RwLock<Option<Committee<N>>>>,
+    current_committee: RwLock<Option<Committee<N>>>,
     /// The latest block.
-    current_block: Arc<RwLock<Block<N>>>,
+    current_block: RwLock<Block<N>>,
     /// The recent committees of interest paired with their applicable rounds.
     ///
     /// Each entry consisting of a round `R` and a committee `C`,
@@ -155,7 +155,7 @@ pub struct InnerLedger<N: Network, C: ConsensusStorage<N>> {
     /// i.e. resulting from all the bonding and unbonding transactions before `R`.
     /// If `L` is the lookback round distance, `C` is the active committee at round `R + L`
     /// (i.e. the committee in charge of running consensus at round `R + L`).
-    committee_cache: Arc<Mutex<LruCache<u64, Committee<N>>>>,
+    committee_cache: Mutex<LruCache<u64, Committee<N>>>,
     /// The cache that holds the provers and the number of solutions they have submitted for the current epoch.
     epoch_provers_cache: Arc<RwLock<IndexMap<Address<N>, u32>>>,
 }
@@ -213,15 +213,15 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         let current_committee = vm.finalize_store().committee_store().current_committee().ok();
 
         // Create a committee cache.
-        let committee_cache = Arc::new(Mutex::new(LruCache::new(COMMITTEE_CACHE_SIZE.try_into().unwrap())));
+        let committee_cache = Mutex::new(LruCache::new(COMMITTEE_CACHE_SIZE.try_into().unwrap()));
 
         // Initialize the ledger.
         let ledger = Self(Arc::new(InnerLedger {
             vm,
             genesis_block: genesis_block.clone(),
             current_epoch_hash: Default::default(),
-            current_committee: Arc::new(RwLock::new(current_committee)),
-            current_block: Arc::new(RwLock::new(genesis_block.clone())),
+            current_committee: RwLock::new(current_committee),
+            current_block: RwLock::new(genesis_block.clone()),
             committee_cache,
             epoch_provers_cache: Default::default(),
         }));

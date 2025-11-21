@@ -112,13 +112,24 @@ pub enum RecordsFilter<N: Network> {
 /// which loads the ledger from storage,
 /// or initializes it with the genesis block if the storage is empty
 #[derive(Clone)]
-pub struct Ledger<N: Network, C: ConsensusStorage<N>> {
+pub struct Ledger<N: Network, C: ConsensusStorage<N>>(Arc<InnerLedger<N, C>>);
+
+impl<N: Network, C: ConsensusStorage<N>> Deref for Ledger<N, C> {
+    type Target = InnerLedger<N, C>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+#[doc(hidden)]
+pub struct InnerLedger<N: Network, C: ConsensusStorage<N>> {
     /// The VM state.
     vm: VM<N, C>,
     /// The genesis block.
     genesis_block: Block<N>,
     /// The current epoch hash.
-    current_epoch_hash: Arc<RwLock<Option<N::BlockHash>>>,
+    current_epoch_hash: RwLock<Option<N::BlockHash>>,
     /// The committee resulting from all the on-chain staking activity.
     ///
     /// This includes any bonding and unbonding transactions in the latest block.
@@ -205,7 +216,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
         let committee_cache = Arc::new(Mutex::new(LruCache::new(COMMITTEE_CACHE_SIZE.try_into().unwrap())));
 
         // Initialize the ledger.
-        let mut ledger = Self {
+        let ledger = Self(Arc::new(InnerLedger {
             vm,
             genesis_block: genesis_block.clone(),
             current_epoch_hash: Default::default(),
@@ -213,7 +224,7 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             current_block: Arc::new(RwLock::new(genesis_block.clone())),
             committee_cache,
             epoch_provers_cache: Default::default(),
-        };
+        }));
 
         // If the block store is empty, add the genesis block.
         if ledger.vm.block_store().max_height().is_none() {
@@ -231,18 +242,20 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
             .with_context(|| format!("Failed to load block {latest_height} from the ledger"))?;
 
         // Set the current block.
-        ledger.current_block = Arc::new(RwLock::new(block));
+        *ledger.current_block.write() = block;
         // Set the current committee (and ensures the latest committee exists).
-        ledger.current_committee = Arc::new(RwLock::new(Some(ledger.latest_committee()?)));
+        *ledger.current_committee.write() = Some(ledger.latest_committee()?);
         // Set the current epoch hash.
-        ledger.current_epoch_hash = Arc::new(RwLock::new(Some(ledger.get_epoch_hash(latest_height)?)));
+        *ledger.current_epoch_hash.write() = Some(ledger.get_epoch_hash(latest_height)?);
         // Set the epoch prover cache.
-        ledger.epoch_provers_cache = Arc::new(RwLock::new(ledger.load_epoch_provers()));
+        *ledger.epoch_provers_cache.write() = ledger.load_epoch_provers();
 
         finish!(timer, "Initialize ledger");
         Ok(ledger)
     }
+}
 
+impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
     /// Creates a rocksdb checkpoint in the specified directory, which needs to not exist at the
     /// moment of calling. The checkpoints are based on hard links, which means they can both be
     /// incremental (i.e. they aren't full physical copies), and used as full rollback points
@@ -281,12 +294,12 @@ impl<N: Network, C: ConsensusStorage<N>> Ledger<N, C> {
     }
 
     /// Returns the VM.
-    pub const fn vm(&self) -> &VM<N, C> {
+    pub fn vm(&self) -> &VM<N, C> {
         &self.vm
     }
 
     /// Returns the puzzle.
-    pub const fn puzzle(&self) -> &Puzzle<N> {
+    pub fn puzzle(&self) -> &Puzzle<N> {
         self.vm.puzzle()
     }
 

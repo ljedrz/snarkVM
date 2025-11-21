@@ -249,11 +249,13 @@ impl<N: Network> BlockStorage<N> for BlockDB<N> {
         path.push("block_tree");
 
         if let Ok(serialized_tree) = fs::read(&path) {
+            let now = std::time::Instant::now();
             // Deserialize a ready block tree.
             let ret = bincode::deserialize(&serialized_tree).or_else(|e| {
                 tracing::error!("Failed to deserialize the block tree ({e}), constructing from scratch");
                 construct_from_scratch(self)
             });
+            println!("de: {:?}", now.elapsed());
 
             // Ensure that an old cached tree is not reused.
             let _ = fs::remove_file(path);

@@ -23,6 +23,7 @@ pub use path::*;
 mod tests;
 
 use snarkvm_console_types::prelude::*;
+use snarkvm_utilities::{deserialize_huge_vec, serialize_huge_vec};
 
 use aleo_std::prelude::*;
 
@@ -42,6 +43,7 @@ pub struct MerkleTree<E: Environment, LH: LeafHash<Hash = PH::Hash>, PH: PathHas
     /// The computed root of the full Merkle tree.
     root: PH::Hash,
     /// The internal hashes, from root to hashed leaves, of the full Merkle tree.
+    #[serde(serialize_with = "serialize_huge_vec", deserialize_with = "deserialize_huge_vec")]
     tree: Vec<PH::Hash>,
     /// The canonical empty hash.
     empty_hash: Field<E>,

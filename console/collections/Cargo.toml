@@ -25,6 +25,9 @@ workspace = true
 workspace = true
 features = [ "field", "integers" ]
 
+[dependencies.snarkvm-utilities]
+workspace = true
+
 [dependencies.aleo-std]
 workspace = true
 

@@ -86,6 +86,12 @@ pub trait BigInteger:
     /// multiple of 64.
     fn num_bits(&self) -> u32;
 
+    /// Returns the number of trailing zeros.
+    fn trailing_zeros(&self) -> u32;
+
+    /// Applies a right shift assignment.
+    fn shr_assign(&mut self, shift: u32);
+
     /// Compute the `i`-th bit of `self`.
     fn get_bit(&self, i: usize) -> bool;
 

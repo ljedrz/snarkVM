@@ -199,6 +199,57 @@ impl BigInteger for BigInteger384 {
     }
 
     #[inline]
+    fn trailing_zeros(&self) -> u32 {
+        for (i, &limb) in self.0.iter().enumerate() {
+            if limb != 0 {
+                return limb.trailing_zeros() + (i as u32 * 64);
+            }
+        }
+        384
+    }
+
+    #[inline]
+    fn shr_assign(&mut self, shift: u32) {
+        // If shifting more than the total width, result is 0.
+        if shift >= 384 {
+            self.0 = [0; 6];
+            return;
+        }
+
+        let word_shift = (shift as usize) / 64;
+        let bit_shift = shift % 64;
+
+        // Optimization: If purely shifting whole words, skip bitwise logic
+        if bit_shift == 0 {
+            // Move words down
+            for i in 0..(6 - word_shift) {
+                self.0[i] = self.0[i + word_shift];
+            }
+        } else {
+            let inv_bit_shift = 64 - bit_shift;
+
+            // Loop from LSB up to the last valid destination limb.
+            // We pull data from higher indices down to 'i'.
+            for i in 0..(6 - word_shift) {
+                // Take the shifted bits of the current source limb
+                let low_part = self.0[i + word_shift] >> bit_shift;
+
+                // If there is a next limb, take its lower bits and move them
+                // to the top of our current limb.
+                let high_part = if i + word_shift + 1 < 6 { self.0[i + word_shift + 1] << inv_bit_shift } else { 0 };
+
+                self.0[i] = low_part | high_part;
+            }
+        }
+
+        // Zero-fill the upper limbs that are now "empty"
+        // e.g. if we shifted right by 1 word, the top word must become 0.
+        for i in (6 - word_shift)..6 {
+            self.0[i] = 0;
+        }
+    }
+
+    #[inline]
     fn get_bit(&self, i: usize) -> bool {
         if i >= 64 * 6 {
             false

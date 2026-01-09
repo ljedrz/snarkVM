@@ -289,24 +289,48 @@ impl<P: Fp256Parameters> Field for Fp256<P> {
     #[inline]
     fn inverse(&self) -> Option<Self> {
         if self.is_zero() {
-            None
-        } else {
-            // Guajardo Kumar Paar Pelzl
-            // Efficient Software-Implementation of Finite Fields with Applications to
-            // Cryptography
-            // Algorithm 16 (BEA for Inversion in Fp)
+            return None;
+        }
 
-            let one = BigInteger::from(1);
+        // Based on
+        // Guajardo Kumar Paar Pelzl
+        // Efficient Software-Implementation of Finite Fields with Applications to
+        // Cryptography
+        // Algorithm 16 (BEA for Inversion in Fp)
 
-            let mut u = self.0;
-            let mut v = P::MODULUS;
-            let mut b = Self(P::R2, PhantomData); // Avoids unnecessary reduction step.
-            let mut c = Self::zero();
+        // Constants
+        let mut u = self.0;
+        let mut v = P::MODULUS;
+        let mut b = Self(P::R2, PhantomData); // Avoids unnecessary reduction step.
+        let mut c = Self::zero();
 
-            while u != one && v != one {
-                while u.is_even() {
-                    u.div2();
+        // Handle initial parity of 'u' in bulk.
+        // 'v' is the modulus (odd), so skip checking it.
+        let k = u.trailing_zeros();
+        if k > 0 {
+            u.shr_assign(k);
 
+            for _ in 0..k {
+                if b.0.is_even() {
+                    b.0.div2();
+                } else {
+                    b.0.add_nocarry(&P::MODULUS);
+                    b.0.div2();
+                }
+            }
+        }
+
+        // Loop until convergence (u == v).
+        // This removes the need for comparing against 'one'.
+        while u != v {
+            if v < u {
+                u.sub_noborrow(&v);
+                b.sub_assign(&c);
+
+                let k = u.trailing_zeros();
+                u.shr_assign(k);
+
+                for _ in 0..k {
                     if b.0.is_even() {
                         b.0.div2();
                     } else {
@@ -314,10 +338,14 @@ impl<P: Fp256Parameters> Field for Fp256<P> {
                         b.0.div2();
                     }
                 }
+            } else {
+                v.sub_noborrow(&u);
+                c.sub_assign(&b);
 
-                while v.is_even() {
-                    v.div2();
+                let k = v.trailing_zeros();
+                v.shr_assign(k);
 
+                for _ in 0..k {
                     if c.0.is_even() {
                         c.0.div2();
                     } else {
@@ -325,18 +353,10 @@ impl<P: Fp256Parameters> Field for Fp256<P> {
                         c.0.div2();
                     }
                 }
-
-                if v < u {
-                    u.sub_noborrow(&v);
-                    b.sub_assign(&c);
-                } else {
-                    v.sub_noborrow(&u);
-                    c.sub_assign(&b);
-                }
             }
-
-            if u == one { Some(b) } else { Some(c) }
         }
+
+        Some(b)
     }
 
     fn inverse_in_place(&mut self) -> Option<&mut Self> {

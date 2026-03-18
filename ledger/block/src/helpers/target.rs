@@ -1852,6 +1852,78 @@ mod tests {
     }
 
     #[test]
+    fn simulate_coinbase_target_over_time() {
+        // simulation parameters
+        let initial_block_height: u32 = 16926262;
+        let simulated_block_time: i64 = 3;
+        let blocks_to_simulate: u32 = 100_000;
+
+        // starting values
+        let starting_coinbase_target: u64 = 72998938126239;
+        let starting_timestamp: i64 = 1773856074;
+
+        // grab the cumulative weight and timestamps from two distant blocks
+        let weight_new: u128 = 1152371587069030824158;
+        let weight_old: u128 = 1152348711519285754611;
+        let timestamp_new: i64 = 1773856074;
+        let timestamp_old: i64 = 1773853623;
+
+        // calculate the pure target weight generated per second
+        let seconds_elapsed = (timestamp_new - timestamp_old) as u128;
+        let hash_power_per_second = (weight_new.saturating_sub(weight_old)) / seconds_elapsed;
+
+        // the fixed amount of target weight the network produces every block (time-based)
+        let combined_proof_target_per_block = hash_power_per_second * (simulated_block_time as u128);
+
+        // initialize state trackers ---
+        let mut current_timestamp: i64 = starting_timestamp;
+        let mut latest_coinbase_target: u64 = starting_coinbase_target;
+        let mut last_coinbase_target: u64 = starting_coinbase_target;
+        let mut last_coinbase_timestamp: i64 = current_timestamp;
+
+        let mut latest_cumulative_proof_target: u128 = 0;
+        let mut latest_cumulative_weight: u128 = 0;
+
+        // CSV header
+        println!("block_height,coinbase_target");
+
+        for i in 1..=blocks_to_simulate {
+            let current_block_height = initial_block_height + i;
+            let next_timestamp = current_timestamp + simulated_block_time;
+
+            // Calculate the next targets using the Aleo function
+            let (
+                next_coinbase_target,
+                _next_proof_target,
+                next_cumulative_proof_target,
+                next_cumulative_weight,
+                next_last_coinbase_target,
+                next_last_coinbase_timestamp,
+            ) = to_next_targets::<CurrentNetwork>(
+                latest_cumulative_proof_target,
+                combined_proof_target_per_block,
+                latest_coinbase_target,
+                latest_cumulative_weight,
+                last_coinbase_target,
+                last_coinbase_timestamp,
+                next_timestamp,
+            )
+            .expect("Failed to calculate next targets");
+
+            // output the CSV row
+            println!("{current_block_height},{next_coinbase_target}");
+
+            // update state for the next iteration
+            latest_cumulative_proof_target = next_cumulative_proof_target;
+            latest_coinbase_target = next_coinbase_target;
+            latest_cumulative_weight = next_cumulative_weight;
+            last_coinbase_target = next_last_coinbase_target;
+            last_coinbase_timestamp = next_last_coinbase_timestamp;
+            current_timestamp = next_timestamp;
+        }
+    }
+
+    #[test]
     fn test_to_next_targets_does_not_meet_threshold() {
         let mut rng = TestRng::default();
 

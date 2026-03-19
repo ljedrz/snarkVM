@@ -1861,23 +1861,23 @@ mod tests {
 
         // --- SNAPSHOT 1: THE GOLD RUSH (High Hash Rate, Lower Target) ---
         // The "Old" block at the start of your measurement window
-        let weight_gold_rush_old: u128 = todo!("Enter cumulative_weight of an older block during Gold Rush");
-        let timestamp_gold_rush_old: i64 = todo!("Enter timestamp of that older Gold Rush block");
-        let target_gold_rush_old: u64 = todo!("Enter coinbase_target of that older Gold Rush block");
+        let weight_gold_rush_old: u128 = 1151916645904464172942;
+        let timestamp_gold_rush_old: i64 = 1773809994;
+        let target_gold_rush_old: u64 = 6942300001710;
 
         // The "New" block at the end of your measurement window
-        let weight_gold_rush_new: u128 = todo!("Enter cumulative_weight of a newer block during Gold Rush");
-        let timestamp_gold_rush_new: i64 = todo!("Enter timestamp of that newer Gold Rush block");
-        let target_gold_rush_new: u64 = todo!("Enter coinbase_target of that newer Gold Rush block");
+        let weight_gold_rush_new: u128 = 1151931412009916646354;
+        let timestamp_gold_rush_new: i64 = 1773813148;
+        let target_gold_rush_new: u64 = 8515404021904;
 
         // --- SNAPSHOT 2: THE PLATEAU (Lower Hash Rate, Stabilized Target) ---
-        let weight_plateau_old: u128 = todo!("Enter cumulative_weight of an older block during the Plateau");
-        let timestamp_plateau_old: i64 = todo!("Enter timestamp of that older Plateau block");
-        let target_plateau_old: u64 = todo!("Enter coinbase_target of that older Plateau block");
+        let weight_plateau_old: u128 = 1154044337260535790764;
+        let timestamp_plateau_old: i64 = 1773920491;
+        let target_plateau_old: u64 = 204406400781117;
 
-        let weight_plateau_new: u128 = todo!("Enter cumulative_weight of a newer block during the Plateau");
-        let timestamp_plateau_new: i64 = todo!("Enter timestamp of that newer Plateau block");
-        let target_plateau_new: u64 = todo!("Enter coinbase_target of that newer Plateau block");
+        let weight_plateau_new: u128 = 1154096307454396057924;
+        let timestamp_plateau_new: i64 = 1773880351;
+        let target_plateau_new: u64 = 202743932762476;
 
         // =========================================================================
         // PHASE 2: PRIMITIVE INPUTS FOR SIMULATION STARTING STATE
@@ -1886,19 +1886,19 @@ mod tests {
         let simulated_block_time: i64 = 3; // Standard Aleo block time
 
         // --- THE STARTING LINE (Block 0 of your simulation) ---
-        let initial_block_height: u32 = todo!("Enter the block height you want to start simulating from");
-        let starting_coinbase_target: u64 = todo!("Enter the coinbase_target of the starting block");
-        let starting_timestamp: i64 = todo!("Enter the timestamp of the starting block");
+        let initial_block_height: u32 = 16949427;
+        let starting_coinbase_target: u64 = 202743932762476;
+        let starting_timestamp: i64 = 1773880351;
 
         // --- THE LAST ANCHOR BLOCK (Look backwards until cumulative_proof_target drops to 0) ---
-        let mut last_coinbase_target: u64 = todo!("Enter the coinbase_target of the last anchor block");
-        let mut last_coinbase_timestamp: i64 = todo!("Enter the timestamp of the last anchor block");
+        let mut last_coinbase_target: u64 = 202870674769051;
+        let mut last_coinbase_timestamp: i64 = 1773880347;
 
         // --- THE INITIAL HASH POWER (Right at your starting block) ---
-        let weight_start_old: u128 = todo!("Enter cumulative_weight of an older block near your start line");
-        let timestamp_start_old: i64 = todo!("Enter timestamp of that older start block");
-        let weight_start_new: u128 = todo!("Enter cumulative_weight of your actual starting block");
-        let timestamp_start_new: i64 = todo!("Enter timestamp of your actual starting block");
+        let weight_start_old: u128 = 1154084257573328648543;
+        let timestamp_start_old: i64 = 1773879764;
+        let weight_start_new: u128 = weight_plateau_new;
+        let timestamp_start_new: i64 = starting_timestamp;
 
         // =========================================================================
         // PHASE 3: AUTOMATED DERIVATIONS (NO MANUAL ENTRY REQUIRED BELOW)

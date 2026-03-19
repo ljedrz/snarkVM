@@ -1852,63 +1852,113 @@ mod tests {
     }
 
     #[test]
-    fn simulate_coinbase_target_with_decay() {
-        // simulation parameters
-        let simulated_block_time: i64 = 3;
-        let blocks_to_simulate: u32 = 100_000;
+    #[ignore = "Requires manual primitive values from the block explorer"]
+    fn simulate_coinbase_target_with_empirical_decay_from_primitives() {
+        // =========================================================================
+        // PHASE 1: PRIMITIVE INPUTS FOR EMPIRICAL DECAY FACTOR
+        // =========================================================================
+        // Provide the raw cumulative weights, timestamps, and targets for two distinct periods.
 
-        // decay logic
-        // 0.0 = No drop-off (the violent growth you saw before)
-        // 0.5 = If difficulty 4x's, hash power drops by half
-        // 1.0 = 1:1 drop-off (difficulty doubles, hash power halves)
-        // 0.6 is a solid starting estimate for typical network hardware distribution
-        let hardware_dropoff_factor: f64 = 0.6;
+        // --- SNAPSHOT 1: THE GOLD RUSH (High Hash Rate, Lower Target) ---
+        // The "Old" block at the start of your measurement window
+        let weight_gold_rush_old: u128 = todo!("Enter cumulative_weight of an older block during Gold Rush");
+        let timestamp_gold_rush_old: i64 = todo!("Enter timestamp of that older Gold Rush block");
+        let target_gold_rush_old: u64 = todo!("Enter coinbase_target of that older Gold Rush block");
 
-        // starting snapshot
-        let initial_block_height: u32 = 16913000;
-        let starting_coinbase_target: u64 = 6942300001710;
-        let starting_timestamp: i64 = 1773809994;
+        // The "New" block at the end of your measurement window
+        let weight_gold_rush_new: u128 = todo!("Enter cumulative_weight of a newer block during Gold Rush");
+        let timestamp_gold_rush_new: i64 = todo!("Enter timestamp of that newer Gold Rush block");
+        let target_gold_rush_new: u64 = todo!("Enter coinbase_target of that newer Gold Rush block");
 
-        // values from a previous anchor block (cumulative proof target ~= 0)
-        let mut last_coinbase_target: u64 = 6947687525678;
-        let mut last_coinbase_timestamp: i64 = 1773809989;
+        // --- SNAPSHOT 2: THE PLATEAU (Lower Hash Rate, Stabilized Target) ---
+        let weight_plateau_old: u128 = todo!("Enter cumulative_weight of an older block during the Plateau");
+        let timestamp_plateau_old: i64 = todo!("Enter timestamp of that older Plateau block");
+        let target_plateau_old: u64 = todo!("Enter coinbase_target of that older Plateau block");
 
-        // true initial hash power
-        let weight_new: u128 = 1151916645904464172942;
-        let weight_old: u128 = 1151895969489278985776;
-        let timestamp_new: i64 = 1773809994;
-        let timestamp_old: i64 = 1773806710;
+        let weight_plateau_new: u128 = todo!("Enter cumulative_weight of a newer block during the Plateau");
+        let timestamp_plateau_new: i64 = todo!("Enter timestamp of that newer Plateau block");
+        let target_plateau_new: u64 = todo!("Enter coinbase_target of that newer Plateau block");
 
-        let seconds_elapsed = (timestamp_new - timestamp_old) as u128;
-        let initial_hash_power_per_second = (weight_new.saturating_sub(weight_old)) / seconds_elapsed;
+        // =========================================================================
+        // PHASE 2: PRIMITIVE INPUTS FOR SIMULATION STARTING STATE
+        // =========================================================================
+        let blocks_to_simulate: u32 = 25_000;
+        let simulated_block_time: i64 = 3; // Standard Aleo block time
 
-        // initialize state trackers
+        // --- THE STARTING LINE (Block 0 of your simulation) ---
+        let initial_block_height: u32 = todo!("Enter the block height you want to start simulating from");
+        let starting_coinbase_target: u64 = todo!("Enter the coinbase_target of the starting block");
+        let starting_timestamp: i64 = todo!("Enter the timestamp of the starting block");
+
+        // --- THE LAST ANCHOR BLOCK (Look backwards until cumulative_proof_target drops to 0) ---
+        let mut last_coinbase_target: u64 = todo!("Enter the coinbase_target of the last anchor block");
+        let mut last_coinbase_timestamp: i64 = todo!("Enter the timestamp of the last anchor block");
+
+        // --- THE INITIAL HASH POWER (Right at your starting block) ---
+        let weight_start_old: u128 = todo!("Enter cumulative_weight of an older block near your start line");
+        let timestamp_start_old: i64 = todo!("Enter timestamp of that older start block");
+        let weight_start_new: u128 = todo!("Enter cumulative_weight of your actual starting block");
+        let timestamp_start_new: i64 = todo!("Enter timestamp of your actual starting block");
+
+        // =========================================================================
+        // PHASE 3: AUTOMATED DERIVATIONS (NO MANUAL ENTRY REQUIRED BELOW)
+        // =========================================================================
+
+        // 1. Calculate the Gold Rush averages
+        let elapsed_gold_rush = (timestamp_gold_rush_new - timestamp_gold_rush_old) as f64;
+        let hash_power_gold_rush =
+            (weight_gold_rush_new.saturating_sub(weight_gold_rush_old)) as f64 / elapsed_gold_rush;
+        let avg_target_gold_rush = (target_gold_rush_old as f64 + target_gold_rush_new as f64) / 2.0;
+
+        // 2. Calculate the Plateau averages
+        let elapsed_plateau = (timestamp_plateau_new - timestamp_plateau_old) as f64;
+        let hash_power_plateau = (weight_plateau_new.saturating_sub(weight_plateau_old)) as f64 / elapsed_plateau;
+        let avg_target_plateau = (target_plateau_old as f64 + target_plateau_new as f64) / 2.0;
+
+        // 3. Derive the Empirical Decay Factor (The 'k' exponent)
+        let empirical_decay_factor: f64 =
+            (hash_power_plateau / hash_power_gold_rush).ln() / (avg_target_gold_rush / avg_target_plateau).ln();
+
+        // 4. Calculate the Starting Hash Power
+        let elapsed_start = (timestamp_start_new - timestamp_start_old) as f64;
+        let initial_hash_power_per_second = (weight_start_new.saturating_sub(weight_start_old)) as f64 / elapsed_start;
+
+        // =========================================================================
+        // PHASE 4: STATE TRACKERS & CSV HEADER
+        // =========================================================================
         let mut current_timestamp: i64 = starting_timestamp;
         let mut latest_coinbase_target: u64 = starting_coinbase_target;
 
         let mut latest_cumulative_proof_target: u128 = 0;
         let mut latest_cumulative_weight: u128 = 0;
 
-        // CSV header now includes the hash power ratio so you can track the drop-off
-        println!("block_height,coinbase_target,active_hash_power_ratio");
+        // Output calculated metrics to stderr so they don't break the CSV pipe on stdout
+        eprintln!("--- DERIVED METRICS ---");
+        eprintln!("Avg Gold Rush Target: {:.0}", avg_target_gold_rush);
+        eprintln!("Gold Rush Hash Power: {:.0} / sec", hash_power_gold_rush);
+        eprintln!("Avg Plateau Target:   {:.0}", avg_target_plateau);
+        eprintln!("Plateau Hash Power:   {:.0} / sec", hash_power_plateau);
+        eprintln!("Starting Hash Power:  {:.0} / sec", initial_hash_power_per_second);
+        eprintln!("Empirical Decay (k):  {:.4}", empirical_decay_factor);
+        eprintln!("-----------------------");
 
+        println!("block_height,coinbase_target,active_hash_power_ratio,current_hash_power_per_sec");
+
+        // =========================================================================
+        // PHASE 5: THE SIMULATION LOOP
+        // =========================================================================
         for i in 1..=blocks_to_simulate {
             let current_block_height = initial_block_height + i;
             let next_timestamp = current_timestamp + simulated_block_time;
 
-            // how much has the target grown since our initial snapshot?
+            // --- APPLY THE EMPIRICAL HARDWARE GUILLOTINE ---
             let target_growth_ratio = latest_coinbase_target as f64 / starting_coinbase_target as f64;
+            let active_hash_power_ratio = (1.0 / target_growth_ratio.max(1.0)).powf(empirical_decay_factor);
 
-            // calculate the percentage of hash power still active (inverse of growth, scaled by dropoff)
-            // use max(1.0) just in case the target temporarily dips below the starting line
-            let active_hash_power_ratio = (1.0 / target_growth_ratio.max(1.0)).powf(hardware_dropoff_factor);
-
-            // apply the decay to the physical network capability
-            let current_hash_power_per_second =
-                (initial_hash_power_per_second as f64 * active_hash_power_ratio) as u128;
+            let current_hash_power_per_second = (initial_hash_power_per_second * active_hash_power_ratio) as u128;
             let combined_proof_target_per_block = current_hash_power_per_second * (simulated_block_time as u128);
 
-            // calculate next targets
+            // --- CALCULATE NEXT TARGETS ---
             let (
                 next_coinbase_target,
                 _next_proof_target,
@@ -1927,10 +1977,13 @@ mod tests {
             )
             .expect("Failed to calculate next targets");
 
-            // output the CSV row
-            println!("{},{},{:.4}", current_block_height, next_coinbase_target, active_hash_power_ratio);
+            // --- OUTPUT CSV ROW ---
+            println!(
+                "{},{},{:.4},{}",
+                current_block_height, next_coinbase_target, active_hash_power_ratio, current_hash_power_per_second
+            );
 
-            // update state for the next iteration
+            // --- UPDATE STATE FOR NEXT ITERATION ---
             latest_cumulative_proof_target = next_cumulative_proof_target;
             latest_coinbase_target = next_coinbase_target;
             latest_cumulative_weight = next_cumulative_weight;

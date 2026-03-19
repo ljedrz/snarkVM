@@ -1852,46 +1852,63 @@ mod tests {
     }
 
     #[test]
-    fn simulate_coinbase_target_over_time() {
+    fn simulate_coinbase_target_with_decay() {
         // simulation parameters
-        let initial_block_height: u32 = 16926262;
         let simulated_block_time: i64 = 3;
         let blocks_to_simulate: u32 = 100_000;
 
-        // starting values
-        let starting_coinbase_target: u64 = 72998938126239;
-        let starting_timestamp: i64 = 1773856074;
+        // decay logic
+        // 0.0 = No drop-off (the violent growth you saw before)
+        // 0.5 = If difficulty 4x's, hash power drops by half
+        // 1.0 = 1:1 drop-off (difficulty doubles, hash power halves)
+        // 0.6 is a solid starting estimate for typical network hardware distribution
+        let hardware_dropoff_factor: f64 = 0.6;
 
-        // grab the cumulative weight and timestamps from two distant blocks
-        let weight_new: u128 = 1152371587069030824158;
-        let weight_old: u128 = 1152348711519285754611;
-        let timestamp_new: i64 = 1773856074;
-        let timestamp_old: i64 = 1773853623;
+        // starting snapshot
+        let initial_block_height: u32 = 16913000;
+        let starting_coinbase_target: u64 = 6942300001710;
+        let starting_timestamp: i64 = 1773809994;
 
-        // calculate the pure target weight generated per second
+        // values from a previous anchor block (cumulative proof target ~= 0)
+        let mut last_coinbase_target: u64 = 6947687525678;
+        let mut last_coinbase_timestamp: i64 = 1773809989;
+
+        // true initial hash power
+        let weight_new: u128 = 1151916645904464172942;
+        let weight_old: u128 = 1151895969489278985776;
+        let timestamp_new: i64 = 1773809994;
+        let timestamp_old: i64 = 1773806710;
+
         let seconds_elapsed = (timestamp_new - timestamp_old) as u128;
-        let hash_power_per_second = (weight_new.saturating_sub(weight_old)) / seconds_elapsed;
+        let initial_hash_power_per_second = (weight_new.saturating_sub(weight_old)) / seconds_elapsed;
 
-        // the fixed amount of target weight the network produces every block (time-based)
-        let combined_proof_target_per_block = hash_power_per_second * (simulated_block_time as u128);
-
-        // initialize state trackers ---
+        // initialize state trackers
         let mut current_timestamp: i64 = starting_timestamp;
         let mut latest_coinbase_target: u64 = starting_coinbase_target;
-        let mut last_coinbase_target: u64 = starting_coinbase_target;
-        let mut last_coinbase_timestamp: i64 = current_timestamp;
 
         let mut latest_cumulative_proof_target: u128 = 0;
         let mut latest_cumulative_weight: u128 = 0;
 
-        // CSV header
-        println!("block_height,coinbase_target");
+        // CSV header now includes the hash power ratio so you can track the drop-off
+        println!("block_height,coinbase_target,active_hash_power_ratio");
 
         for i in 1..=blocks_to_simulate {
             let current_block_height = initial_block_height + i;
             let next_timestamp = current_timestamp + simulated_block_time;
 
-            // Calculate the next targets using the Aleo function
+            // how much has the target grown since our initial snapshot?
+            let target_growth_ratio = latest_coinbase_target as f64 / starting_coinbase_target as f64;
+
+            // calculate the percentage of hash power still active (inverse of growth, scaled by dropoff)
+            // use max(1.0) just in case the target temporarily dips below the starting line
+            let active_hash_power_ratio = (1.0 / target_growth_ratio.max(1.0)).powf(hardware_dropoff_factor);
+
+            // apply the decay to the physical network capability
+            let current_hash_power_per_second =
+                (initial_hash_power_per_second as f64 * active_hash_power_ratio) as u128;
+            let combined_proof_target_per_block = current_hash_power_per_second * (simulated_block_time as u128);
+
+            // calculate next targets
             let (
                 next_coinbase_target,
                 _next_proof_target,
@@ -1911,7 +1928,7 @@ mod tests {
             .expect("Failed to calculate next targets");
 
             // output the CSV row
-            println!("{current_block_height},{next_coinbase_target}");
+            println!("{},{},{:.4}", current_block_height, next_coinbase_target, active_hash_power_ratio);
 
             // update state for the next iteration
             latest_cumulative_proof_target = next_cumulative_proof_target;

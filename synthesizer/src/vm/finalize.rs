@@ -33,7 +33,17 @@ struct CandidateTransactionDetails<N: Network> {
     transition_ids: IndexSet<N::TransitionID>,
     input_ids: IndexSet<Field<N>>,
     output_ids: IndexSet<Field<N>>,
+    /// The serial numbers spent by record inputs in this block.
+    serial_numbers: IndexSet<Field<N>>,
+    /// The tags from record inputs in this block.
+    tags: IndexSet<Field<N>>,
+    /// The record output commitments in this block.
+    commitments: IndexSet<Field<N>>,
+    /// The record output nonces in this block.
+    nonces: IndexSet<Group<N>>,
     tpks: IndexSet<Group<N>>,
+    /// The transition commitments (`tcm`) in this block.
+    tcms: IndexSet<Field<N>>,
     deployment_payers: IndexSet<Address<N>>,
     deployments: IndexSet<ProgramID<N>>,
     block_combined_density: u64,
@@ -45,7 +55,12 @@ impl<N: Network> Default for CandidateTransactionDetails<N> {
             transition_ids: IndexSet::new(),
             input_ids: IndexSet::new(),
             output_ids: IndexSet::new(),
+            serial_numbers: IndexSet::new(),
+            tags: IndexSet::new(),
+            commitments: IndexSet::new(),
+            nonces: IndexSet::new(),
             tpks: IndexSet::new(),
+            tcms: IndexSet::new(),
             deployment_payers: IndexSet::new(),
             deployments: IndexSet::new(),
             block_combined_density: 0,
@@ -59,7 +74,12 @@ impl<N: Network> CandidateTransactionDetails<N> {
         self.transition_ids.extend(transaction.transition_ids());
         self.input_ids.extend(transaction.input_ids());
         self.output_ids.extend(transaction.output_ids());
+        self.serial_numbers.extend(transaction.serial_numbers().copied());
+        self.tags.extend(transaction.tags().copied());
+        self.commitments.extend(transaction.commitments().copied());
+        self.nonces.extend(transaction.nonces().copied());
         self.tpks.extend(transaction.transition_public_keys());
+        self.tcms.extend(transaction.transition_commitments().copied());
         if let Transaction::Deploy(_, _, _, deployment, fee) = transaction {
             fee.payer().map(|payer| self.deployment_payers.insert(payer));
             self.deployments.insert(*deployment.program_id());
@@ -1180,6 +1200,11 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
     /// - The transaction is double-spending an input
     /// - The transaction is producing a duplicate output
     /// - The transaction is producing a duplicate transition public key
+    /// - The transaction is producing a duplicate serial number
+    /// - The transaction is producing a duplicate tag
+    /// - The transaction is producing a duplicate commitment
+    /// - The transaction is producing a duplicate nonce
+    /// - The transaction is producing a duplicate transition commitment
     /// - The transaction is another deployment in the block from the same public fee payer.
     /// - The transaction contains a transition that has been deployed or upgraded in this block.
     /// - The transaction surpasses the spend limits.
@@ -1202,9 +1227,14 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         // Ensure that:
         //  - the transaction is not producing a duplicate transition.
         //  - the programs in the component transitions haven't been deployed or upgraded in this block.
+        let mut transition_ids_in_transaction = IndexSet::new();
         for transition in transaction.transitions() {
             // Get the transition ID.
             let transition_id = transition.id();
+            // If the transition ID is duplicated within this transaction, abort the transaction.
+            if !transition_ids_in_transaction.insert(*transition_id) {
+                return ShouldAbortResult::Abort(format!("Duplicate transition {transition_id} in transaction"));
+            }
             // If the transition ID is already produced in this block or previous blocks, abort the transaction.
             if candidate_transaction_details.transition_ids.contains(transition_id)
                 || self.transition_store().contains_transition_id(transition_id).unwrap_or(true)
@@ -1221,7 +1251,12 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         }
 
         // Ensure that the transaction is not double-spending an input.
+        let mut input_ids_in_transaction = IndexSet::new();
         for input_id in transaction.input_ids() {
+            // If the input ID is duplicated within this transaction, abort the transaction.
+            if !input_ids_in_transaction.insert(*input_id) {
+                return ShouldAbortResult::Abort(format!("Double-spending input {input_id} in transaction"));
+            }
             // If the input ID is already spent in this block or previous blocks, abort the transaction.
             if candidate_transaction_details.input_ids.contains(input_id)
                 || self.transition_store().contains_input_id(input_id).unwrap_or(true)
@@ -1231,7 +1266,12 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
         }
 
         // Ensure that the transaction is not producing a duplicate output.
+        let mut output_ids_in_transaction = IndexSet::new();
         for output_id in transaction.output_ids() {
+            // If the output ID is duplicated within this transaction, abort the transaction.
+            if !output_ids_in_transaction.insert(*output_id) {
+                return ShouldAbortResult::Abort(format!("Duplicate output {output_id} in transaction"));
+            }
             // If the output ID is already produced in this block or previous blocks, abort the transaction.
             if candidate_transaction_details.output_ids.contains(output_id)
                 || self.transition_store().contains_output_id(output_id).unwrap_or(true)
@@ -1240,14 +1280,80 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
             }
         }
 
-        // Ensure that the transaction is not producing a duplicate transition public key.
-        // Note that the tpk and tcm are corresponding, so a uniqueness check for just the tpk is sufficient.
+        // Ensure that the record spends are unique within the transaction, the block, and the chain.
+        let mut serial_numbers_in_transaction = IndexSet::new();
+        for serial_number in transaction.serial_numbers() {
+            if !serial_numbers_in_transaction.insert(*serial_number) {
+                return ShouldAbortResult::Abort(format!("Duplicate serial number {serial_number} in transaction"));
+            }
+            if candidate_transaction_details.serial_numbers.contains(serial_number)
+                || self.transition_store().contains_serial_number(serial_number).unwrap_or(true)
+            {
+                return ShouldAbortResult::Abort(format!("Duplicate serial number {serial_number}"));
+            }
+        }
+
+        let mut tags_in_transaction = IndexSet::new();
+        for tag in transaction.tags() {
+            if !tags_in_transaction.insert(*tag) {
+                return ShouldAbortResult::Abort(format!("Duplicate tag {tag} in transaction"));
+            }
+            if candidate_transaction_details.tags.contains(tag)
+                || self.transition_store().contains_tag(tag).unwrap_or(true)
+            {
+                return ShouldAbortResult::Abort(format!("Duplicate tag {tag}"));
+            }
+        }
+
+        let mut commitments_in_transaction = IndexSet::new();
+        for commitment in transaction.commitments() {
+            if !commitments_in_transaction.insert(*commitment) {
+                return ShouldAbortResult::Abort(format!("Duplicate commitment {commitment} in transaction"));
+            }
+            if candidate_transaction_details.commitments.contains(commitment)
+                || self.transition_store().contains_commitment(commitment).unwrap_or(true)
+            {
+                return ShouldAbortResult::Abort(format!("Duplicate commitment {commitment}"));
+            }
+        }
+
+        let mut nonces_in_transaction = IndexSet::new();
+        for nonce in transaction.nonces() {
+            if !nonces_in_transaction.insert(*nonce) {
+                return ShouldAbortResult::Abort(format!("Duplicate nonce {nonce} in transaction"));
+            }
+            if candidate_transaction_details.nonces.contains(nonce)
+                || self.transition_store().contains_nonce(nonce).unwrap_or(true)
+            {
+                return ShouldAbortResult::Abort(format!("Duplicate nonce {nonce}"));
+            }
+        }
+
+        // Ensure the transition public keys and transition commitments are unique.
+        // Note that the tpk and tcm are not in a 1:1 correspondence, so both must be checked.
+        let mut tpks_in_transaction = IndexSet::new();
         for tpk in transaction.transition_public_keys() {
+            // If the transition public key is duplicated within this transaction, abort the transaction.
+            if !tpks_in_transaction.insert(*tpk) {
+                return ShouldAbortResult::Abort(format!("Duplicate transition public key {tpk} in transaction"));
+            }
             // If the transition public key is already produced in this block or previous blocks, abort the transaction.
             if candidate_transaction_details.tpks.contains(tpk)
                 || self.transition_store().contains_tpk(tpk).unwrap_or(true)
             {
                 return ShouldAbortResult::Abort(format!("Duplicate transition public key {tpk}"));
+            }
+        }
+
+        let mut tcms_in_transaction = IndexSet::new();
+        for tcm in transaction.transition_commitments() {
+            if !tcms_in_transaction.insert(*tcm) {
+                return ShouldAbortResult::Abort(format!("Duplicate transition commitment {tcm} in transaction"));
+            }
+            if candidate_transaction_details.tcms.contains(tcm)
+                || self.transition_store().contains_tcm(tcm).unwrap_or(true)
+            {
+                return ShouldAbortResult::Abort(format!("Duplicate transition commitment {tcm}"));
             }
         }
 

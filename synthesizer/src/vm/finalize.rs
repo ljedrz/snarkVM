@@ -16,9 +16,16 @@
 use super::*;
 
 use snarkvm_ledger_committee::{MAX_DELEGATORS, MIN_DELEGATOR_STAKE, MIN_VALIDATOR_SELF_STAKE};
+use snarkvm_ledger_puzzle::SolutionID;
 #[cfg(feature = "history-staking-rewards")]
 use snarkvm_ledger_store::helpers::Map;
-use snarkvm_synthesizer_error::{FinalizeError, IndexedFinalizeError, IntoIndexedFinalize, indexed_finalize_bail};
+use snarkvm_synthesizer_error::{
+    FinalizeError,
+    IndexedFinalizeError,
+    IntoIndexedFinalize,
+    VmCheckBlockContentError,
+    indexed_finalize_bail,
+};
 use snarkvm_utilities::{cfg_sort_by_cached_key, defer, dev_eprintln};
 
 /// Uniqueness tracking accumulated while assembling a candidate block's transactions.
@@ -224,6 +231,166 @@ impl<N: Network, C: ConsensusStorage<N>> VM<N, C> {
 
         // Return the ratified finalize operations.
         Ok(ratified_finalize_operations)
+    }
+
+    /// Committee lookback for `block.round()` semantics matching `Ledger::get_committee_lookback_for_round`.
+    fn committee_lookback_for_round(&self, round: u64) -> Result<Option<Committee<N>>> {
+        let previous_round = match round % 2 == 0 {
+            true => round.saturating_sub(1),
+            false => round.saturating_sub(2),
+        };
+        let committee_lookback_round = previous_round.saturating_sub(Committee::<N>::COMMITTEE_LOOKBACK_RANGE);
+        self.finalize_store().committee_store().get_committee_for_round(committee_lookback_round)
+    }
+
+    /// Epoch hash at `block_height`, matching `Ledger::get_epoch_hash`.
+    fn epoch_hash_for_height(&self, block_height: u32) -> Result<N::BlockHash> {
+        let epoch_number = block_height.saturating_div(N::NUM_BLOCKS_PER_EPOCH);
+        let epoch_starting_height = epoch_number.saturating_mul(N::NUM_BLOCKS_PER_EPOCH);
+        if epoch_starting_height == 0 {
+            return Ok(N::BlockHash::default());
+        }
+        match self.block_store().get_previous_block_hash(epoch_starting_height)? {
+            Some(hash) => Ok(hash),
+            None => bail!("Missing previous block hash for epoch boundary height {epoch_starting_height}"),
+        }
+    }
+
+    /// Runs `check_speculate` and [`Block::verify`] for a candidate next block. Caller supplies
+    /// committee lookbacks and related ledger-derived inputs (see `Ledger::check_block_content_inner`).
+    ///
+    /// # Panics
+    /// This function panics if called from an async context.
+    #[inline]
+    #[allow(clippy::too_many_arguments)]
+    pub fn check_block_content_inner<R: Rng + CryptoRng>(
+        &self,
+        block: &Block<N>,
+        latest_block: &Block<N>,
+        latest_block_timestamp: i64,
+        latest_state_root: N::StateRoot,
+        previous_committee_lookback: &Committee<N>,
+        committee_lookback: &Committee<N>,
+        puzzle: &Puzzle<N>,
+        latest_epoch_hash: N::BlockHash,
+        current_timestamp: i64,
+        rng: &mut R,
+    ) -> Result<(Vec<SolutionID<N>>, Vec<N::TransactionID>), VmCheckBlockContentError> {
+        let block_timestamp = (block.height() >= N::CONSENSUS_HEIGHT(ConsensusVersion::V12).unwrap_or_default())
+            .then_some(block.timestamp());
+        // Determine the block's spend and synthesis limits.
+        let (block_spend_limit, block_synthesis_limit) = if let Authority::Quorum(subdag) = block.authority() {
+            (subdag.spend_limit(block.height()), subdag.synthesis_limit(block.height()))
+        } else {
+            (None, None)
+        };
+        let state = FinalizeGlobalState::new::<N>(
+            block.round(),
+            block.height(),
+            block_timestamp,
+            block.cumulative_weight(),
+            block.cumulative_proof_target(),
+            block.previous_hash(),
+            block_spend_limit,
+            block_synthesis_limit,
+        )
+        .map_err(VmCheckBlockContentError::Verification)?;
+
+        let time_since_last_block = block.timestamp().saturating_sub(latest_block_timestamp);
+        let ratified_finalize_operations = self
+            .check_speculate(
+                state,
+                time_since_last_block,
+                block.ratifications(),
+                block.solutions(),
+                block.transactions(),
+                rng,
+            )
+            .map_err(VmCheckBlockContentError::Speculation)?;
+
+        block
+            .verify(
+                latest_block,
+                latest_state_root,
+                previous_committee_lookback,
+                committee_lookback,
+                puzzle,
+                latest_epoch_hash,
+                current_timestamp,
+                ratified_finalize_operations,
+            )
+            .map_err(VmCheckBlockContentError::Verification)
+    }
+
+    /// Like [`Self::check_block_content_inner`], loading the block tip and committee lookbacks from this VM.
+    ///
+    /// # Panics
+    /// This function panics if called from an async context.
+    #[inline]
+    pub fn check_block_content_from_tip<R: Rng + CryptoRng>(
+        &self,
+        block: &Block<N>,
+        rng: &mut R,
+    ) -> Result<(Vec<SolutionID<N>>, Vec<N::TransactionID>), VmCheckBlockContentError> {
+        let max_height = self
+            .block_store()
+            .max_height()
+            .ok_or_else(|| VmCheckBlockContentError::Verification(anyhow!("empty block store")))?;
+        let latest_hash = self
+            .block_store()
+            .get_block_hash(max_height)
+            .map_err(VmCheckBlockContentError::Verification)?
+            .ok_or_else(|| VmCheckBlockContentError::Verification(anyhow!("missing tip block hash")))?;
+        let latest_block = self
+            .block_store()
+            .get_block(&latest_hash)
+            .map_err(VmCheckBlockContentError::Verification)?
+            .ok_or_else(|| VmCheckBlockContentError::Verification(anyhow!("missing tip block")))?;
+        let latest_block_timestamp = latest_block.timestamp();
+        let latest_state_root = self.block_store().current_state_root();
+
+        let committee_lookback = self
+            .committee_lookback_for_round(block.round())
+            .map_err(VmCheckBlockContentError::Verification)?
+            .ok_or_else(|| {
+                VmCheckBlockContentError::Verification(anyhow!(
+                    "missing committee lookback for block round {}",
+                    block.round()
+                ))
+            })?;
+        let previous_committee_lookback = self
+            .committee_lookback_for_round(block.round().saturating_sub(1))
+            .map_err(VmCheckBlockContentError::Verification)?
+            .ok_or_else(|| {
+                VmCheckBlockContentError::Verification(anyhow!(
+                    "missing previous committee lookback for block round {}",
+                    block.round()
+                ))
+            })?;
+
+        let latest_epoch_hash =
+            self.epoch_hash_for_height(latest_block.height()).map_err(VmCheckBlockContentError::Verification)?;
+
+        let current_timestamp = i64::try_from(
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map_err(|e| VmCheckBlockContentError::Verification(anyhow!(e)))?
+                .as_secs(),
+        )
+        .map_err(|e| VmCheckBlockContentError::Verification(anyhow!(e)))?;
+
+        self.check_block_content_inner(
+            block,
+            &latest_block,
+            latest_block_timestamp,
+            latest_state_root,
+            &previous_committee_lookback,
+            &committee_lookback,
+            self.puzzle(),
+            latest_epoch_hash,
+            current_timestamp,
+            rng,
+        )
     }
 
     /// Finalizes the given transactions into the VM.
